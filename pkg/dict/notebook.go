@@ -23,7 +23,7 @@ const (
 )
 
 type Notebooks interface {
-	Mark(word string, action Action) (*entity.WordNote, error)
+	Mark(word string, action Action, translation *entity.WordItem) (*entity.WordNote, error)
 	ListNotes() ([]*entity.WordNote, error)
 	ListNotebooks() ([]string, error)
 }
@@ -34,8 +34,8 @@ func OpenNotebook(conf *config.NotebookConfig) (Notebooks, error) {
 	if filenotebook.directory, ok = conf.Parameters[config.NotebookConfigNotebookBasepath].(string); !ok {
 		return nil, errors.New("[Err] invalid notebook base path")
 	}
-	filenotebook.filename = filepath.Join(filenotebook.directory, filenotebook.notebookName+".yaml")
 	filenotebook.notebookName = conf.Default
+	filenotebook.filename = filepath.Join(filenotebook.directory, filenotebook.notebookName+".yaml")
 	if err := filenotebook.init(); err != nil {
 		return nil, err
 	}
@@ -66,22 +66,34 @@ func (f *fileNotebook) init() error {
 	return nil
 }
 
-func (f *fileNotebook) Mark(word string, action Action) (*entity.WordNote, error) {
+func (f *fileNotebook) Mark(word string, action Action, translation *entity.WordItem) (*entity.WordNote, error) {
 	notes, err := f.readNote()
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert translation to string format if provided
+	var translationStr string
+	if translation != nil {
+		translationStr = translation.RawString()
+	}
+
 	note := &entity.WordNote{
 		WordItemId:     entity.WordId(word),
 		Word:           word,
 		LookupTimes:    0,
 		CreateTime:     time.Now().Unix(),
 		LastLookupTime: time.Now().Unix(),
+		Translation:    translationStr,
 	}
 	isOld := false
 	for _, n := range notes {
 		if n.WordItemId == entity.WordId(word) {
 			note, isOld = n, true
+			// Only update translation if it's provided and not empty
+			if translationStr != "" {
+				note.Translation = translationStr
+			}
 			break
 		}
 	}
@@ -186,6 +198,7 @@ type SQLNotebookWordNote struct {
 	LookupTimes    int    `gorm:"lookup_times"`
 	CreateTime     int64  `gorm:"create_time"`
 	LastLookupTime int64  `gorm:"last_lookup_time"`
+	Translation    string `gorm:"translation"`
 }
 
 func (s *SQLNotebookWordNote) TableName() string {
@@ -199,20 +212,27 @@ func (s *SQLNotebookWordNote) toWordNote() *entity.WordNote {
 		LookupTimes:    s.LookupTimes,
 		CreateTime:     s.CreateTime,
 		LastLookupTime: s.LastLookupTime,
+		Translation:    s.Translation,
 	}
 }
 
-func (s *sqlNotebook) Mark(word string, action Action) (*entity.WordNote, error) {
+func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordItem) (*entity.WordNote, error) {
+	// Convert translation to string format if provided
+	var translationStr string
+	if translation != nil {
+		translationStr = translation.RawString()
+	}
+
 	var sql string
 	var params []interface{}
 	now := time.Now().Unix()
 	switch action {
 	case Learning:
-		sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times + 1, last_lookup_time = ?"
-		params = []interface{}{entity.WordId(word), s.notebookName, word, 1, now, now, now}
+		sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times + 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation)"
+		params = []interface{}{entity.WordId(word), s.notebookName, word, 1, now, now, translationStr, now}
 	case Learned:
-		sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times - 1, last_lookup_time = ?"
-		params = []interface{}{entity.WordId(word), s.notebookName, word, 1, now, now, now}
+		sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times - 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation)"
+		params = []interface{}{entity.WordId(word), s.notebookName, word, 1, now, now, translationStr, now}
 	case Delete:
 		sql = "DELETE FROM word_note WHERE notebook = ? AND word_id = ?"
 		params = []interface{}{s.notebookName, entity.WordId(word)}

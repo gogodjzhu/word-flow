@@ -2,14 +2,16 @@ package dict_youdao
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/gogodjzhu/word-flow/internal/buzz_error"
-	"github.com/gogodjzhu/word-flow/internal/util"
-	"github.com/gogodjzhu/word-flow/pkg/dict/entity"
-	"github.com/pkg/errors"
 	"net/http"
 	neturl "net/url"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/gogodjzhu/word-flow/internal/buzz_error"
+	"github.com/gogodjzhu/word-flow/internal/config"
+	"github.com/gogodjzhu/word-flow/internal/util"
+	"github.com/gogodjzhu/word-flow/pkg/dict/entity"
+	"github.com/pkg/errors"
 )
 
 const Host = "https://dict.youdao.com"
@@ -17,7 +19,7 @@ const Host = "https://dict.youdao.com"
 type DictYoudao struct {
 }
 
-func NewDictYoudao(params map[string]interface{}) (*DictYoudao, error) {
+func NewDictYoudao(config *config.YoudaoConfig) (*DictYoudao, error) {
 	return &DictYoudao{}, nil
 }
 
@@ -36,7 +38,7 @@ func (d *DictYoudao) Search(word string) (*entity.WordItem, error) {
 		}
 		keyword := strings.TrimSpace(doc.Find("span.keyword").Text())
 		if len(strings.TrimSpace(keyword)) == 0 {
-			return nil, buzz_error.InvalidWord(word)
+			return nil, buzz_error.InvalidInput("Invalid word: " + word)
 		}
 		trans := strings.TrimSpace(doc.Find("#phrsListTab > div.trans-container > ul").Text())
 		enPhonetic := strings.TrimSpace(doc.Find("#phrsListTab > h2 > div > span:nth-child(1)").Text())
@@ -57,15 +59,19 @@ func (d *DictYoudao) Search(word string) (*entity.WordItem, error) {
 				usages = append(usages, exampleEn+"\n"+exampleCh)
 			}
 		})
+		if len(usages) > 3 {
+			usages = usages[:3]
+		}
 		if formatWordMeanings(trans) == nil || len(formatWordMeanings(trans)) == 0 {
+			// normalize trans: collapse whitespace for a clean single-line definition
 			return &entity.WordItem{
 				ID:   entity.WordId(keyword),
 				Word: keyword,
 				//WordPhonetics: formatPhonetic(keyword, enPhonetic, usPhonetic),
 				WordMeanings: []*entity.WordMeaning{
 					{
-						PartOfSpeech: "phr.",
-						Definitions:  trans,
+						PartOfSpeech: "",
+						Definitions:  renderTrans(trans),
 					},
 				},
 			}, nil
@@ -75,7 +81,7 @@ func (d *DictYoudao) Search(word string) (*entity.WordItem, error) {
 				Word:          keyword,
 				WordPhonetics: formatPhonetic(keyword, enPhonetic, usPhonetic),
 				WordMeanings:  formatWordMeanings(trans),
-				Usages:        usages,
+				Examples: usages,
 			}, nil
 		}
 	})
@@ -145,4 +151,10 @@ func formatWordMeanings(str string) []*entity.WordMeaning {
 		meanings = append(meanings, wordMeaning)
 	}
 	return meanings
+}
+
+// renderTrans collapses all whitespace (including newlines and tabs) into single spaces
+// and trims leading/trailing spaces for a clean one-line definition.
+func renderTrans(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }

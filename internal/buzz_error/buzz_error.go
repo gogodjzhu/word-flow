@@ -11,10 +11,10 @@ func (e BuzzError) Error() string {
 	return fmt.Sprintf("code: %d, message: %s", e.Code, e.Message)
 }
 
-func InvalidWord(msg string) BuzzError {
+func InvalidInput(msg string) BuzzError {
 	return BuzzError{
-		Code:    CodeInvalidWord,
-		Message: "Invalid word: " + msg,
+		Code:    CodeInvalidInput,
+		Message: msg,
 	}
 }
 
@@ -36,7 +36,7 @@ const (
 	CodeSuccess      = 0
 	CodeUnknownError = 1
 
-	CodeInvalidWord     = 1001
+	CodeInvalidInput    = 1001
 	CodeInvalidEndpoint = 1002
 
 	CodeHttpError = 2001
@@ -46,7 +46,7 @@ const (
 	MsgOk           = "ok"
 	MsgUnknownError = "Unknown error"
 
-	MsgInvalidWord     = "Invalid word"
+	MsgInvalidInput    = "Invalid input"
 	MsgInvalidEndpoint = "Invalid endpoint"
 
 	MsgHttpError = "Http error"

@@ -2,6 +2,7 @@ package root
 
 import (
 	"github.com/gogodjzhu/word-flow/pkg/cmd/dict"
+	"github.com/gogodjzhu/word-flow/pkg/cmd/trans"
 	versioncmd "github.com/gogodjzhu/word-flow/pkg/cmd/version"
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
 	"github.com/spf13/cobra"
@@ -31,6 +32,12 @@ func NewCmdRoot(f *cmdutil.Factory) (*cobra.Command, error) {
 		return nil, err
 	} else {
 		cmd.AddCommand(cmdNotebook)
+	}
+
+	if cmdTrans, err := trans.NewCmdTrans(f); err != nil {
+		return nil, err
+	} else {
+		cmd.AddCommand(cmdTrans)
 	}
 
 	return cmd, nil

@@ -104,13 +104,25 @@ type DictConfig struct {
 	Parameters map[string]interface{} `yaml:"parameters"`
 }
 
+func (dc *DictConfig) GetConfigForEndpoint(endpoint string) (DictEndpointConfig, error) {
+	return globalMapper.MapToEndpointConfig(endpoint, dc.Parameters)
+}
+
 const (
-	DictConfigEcdictDbfilename    = "ecdict.dbfilename"
-	DictConfigMWebsterKey         = "mwebster.key"
-	DictConfigChatgptResource     = "chatgpt.resource"
-	DictConfigChatgptDeploymentid = "chatgpt.deploymentid"
-	DictConfigChatgptApiversion   = "chatgpt.apiversion"
-	DictConfigChatgptKey          = "chatgpt.key"
+	DictConfigEcdictDbfilename = "ecdict.dbfilename"
+)
+
+const (
+	DictConfigMWebsterKey = "mwebster.key"
+)
+
+const (
+	DictConfigLLMApiKey      = "llm.api_key"
+	DictConfigLLMUrl         = "llm.url"
+	DictConfigLLMModel       = "llm.model"
+	DictConfigLLMTimeout     = "llm.timeout"
+	DictConfigLLMMaxTokens   = "llm.max_tokens"
+	DictConfigLLMTemperature = "llm.temperature"
 )
 
 type NotebookConfig struct {
@@ -132,6 +144,11 @@ var defaultConfig = Config{
 		Default: "youdao",
 		Parameters: map[string]interface{}{
 			DictConfigEcdictDbfilename: filepath.Join(configDir(), "stardict.db"),
+			DictConfigLLMUrl:           "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+			DictConfigLLMModel:         "glm-4",
+			DictConfigLLMTimeout:       "30s",
+			DictConfigLLMMaxTokens:     2000,
+			DictConfigLLMTemperature:   0.3,
 		},
 	},
 	Notebook: &NotebookConfig{

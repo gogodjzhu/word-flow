@@ -2,10 +2,11 @@ package dict
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
 	"github.com/gogodjzhu/word-flow/pkg/dict"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
@@ -16,11 +17,17 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 
 	var notebookDefault string
 	var dictionaryDefault string
+	var list bool
 	cmd := &cobra.Command{
 		Use:   "dict <word>",
 		Short: "Look up the word in the dictionary",
-		Long:  "Look up the word in the dictionary, you can specify the dictionary by option",
+		Long:  "Look up the word in the dictionary, you can specify the dictionary, including youdao, ecdict, etymonline etc.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// If list flag is provided, print available dictionary types and exit.
+			if list {
+				_, _ = fmt.Fprintln(f.IOStreams.Out, strings.Join(dict.AvailableEndpoints(), ", "))
+				return nil
+			}
 			/* lookup the word in the dictionary */
 			dictionary, err := dict.NewDict(cfg.Dict)
 			if err != nil {
@@ -30,14 +37,19 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 			if err != nil {
 				return err
 			}
-			_, _ = fmt.Fprint(f.IOStreams.Out, wordItem.RenderString())
+			// Use the new rendering system
+			segments := wordItem.Format()
+			renderErr := f.IOStreams.Renderer.RenderToWriter(segments, f.IOStreams.Out)
+			if renderErr != nil {
+				return renderErr
+			}
 
 			/* mark the word as learning in the notebook */
 			notebook, err := dict.OpenNotebook(cfg.Notebook)
 			if err != nil {
 				return err
 			}
-			if _, err := notebook.Mark(wordItem.Word, dict.Learning); err != nil {
+			if _, err := notebook.Mark(wordItem.Word, dict.Learning, wordItem); err != nil {
 				return err
 			}
 			return nil
@@ -50,5 +62,6 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 	}
 	cmd.Flags().StringVarP(&notebookDefault, "notebook", "n", cfg.Notebook.Default, "Specify the notebook")
 	cmd.Flags().StringVarP(&dictionaryDefault, "dictionary", "d", cfg.Dict.Default, "Specify the dictionary")
+	cmd.Flags().BoolVarP(&list, "list", "l", false, "List available dictionary types")
 	return cmd, nil
 }

@@ -3,17 +3,18 @@ package entity
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/fatih/color"
 	"strings"
+
+	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
 )
 
 type WordItem struct {
 	ID            string          `json:"id" yaml:"id"`
 	Word          string          `json:"word" yaml:"word"`
-	Origin        string          `json:"origin" yaml:"-"`
 	WordPhonetics []*WordPhonetic `json:"word_phonetics" yaml:"-"`
 	WordMeanings  []*WordMeaning  `json:"word_meanings" yaml:"-"`
-	Usages        []string        `json:"usages" yaml:"usages"`
+	// mixed examples
+	Examples []string `json:"examples,omitempty" yaml:"examples,omitempty"`
 }
 
 type WordPhonetic struct {
@@ -35,6 +36,7 @@ type WordNote struct {
 	LookupTimes    int    `json:"lookup_times" yaml:"lookup_times"`
 	CreateTime     int64  `json:"create_time" yaml:"create_time"`
 	LastLookupTime int64  `json:"last_lookup_time" yaml:"last_lookup_time"`
+	Translation    string `json:"translation,omitempty" yaml:"translation,omitempty"`
 }
 
 func WordId(word string) string {
@@ -42,44 +44,100 @@ func WordId(word string) string {
 	return hex.EncodeToString(hash[:]) // Convert the hash to a hex string
 }
 
-func (f *WordItem) RenderString() string {
-	red := color.New(color.FgRed).SprintFunc()
-	gray := color.New(color.FgHiBlack).SprintFunc()
-	cyan := color.New(color.FgCyan).SprintFunc()
-	green := color.New(color.FgHiGreen).SprintFunc()
+// Format 返回标记化的文本片段，用于后续渲染
+func (w *WordItem) Format() []cmdutil.MarkupSegment {
+	var segments []cmdutil.MarkupSegment
 
-	var str string
-	str += red(f.Word)
-	str += "\n"
-	if len(f.WordPhonetics) > 0 {
-		for _, phonetic := range f.WordPhonetics {
+	// 单词作为标题
+	segments = append(segments, cmdutil.MarkupSegment{
+		Text: w.Word,
+		Type: cmdutil.MarkupTitle,
+	})
+	segments = append(segments, cmdutil.MarkupSegment{
+		Text: "\n",
+		Type: cmdutil.MarkupText,
+	})
+
+	// 音标信息
+	if len(w.WordPhonetics) > 0 {
+		for _, phonetic := range w.WordPhonetics {
 			if len(strings.TrimSpace(phonetic.Text)) > 0 {
-				str += green(phonetic.LanguageCode) + " [" + phonetic.Text + "] "
+				segments = append(segments, cmdutil.MarkupSegment{
+					Text: phonetic.LanguageCode + " [" + phonetic.Text + "] ",
+					Type: cmdutil.MarkupRef,
+				})
 			}
 		}
-		str += "\n"
-		for _, phonetic := range f.WordPhonetics {
+		segments = append(segments, cmdutil.MarkupSegment{
+			Text: "\n",
+			Type: cmdutil.MarkupText,
+		})
+
+		for _, phonetic := range w.WordPhonetics {
 			if len(strings.TrimSpace(phonetic.Audio)) > 0 {
-				str += gray(phonetic.Audio) + "\n"
+				segments = append(segments, cmdutil.MarkupSegment{
+					Text: phonetic.Audio + "\n",
+					Type: cmdutil.MarkupComment,
+				})
 			}
 		}
 	}
-	for _, meaning := range f.WordMeanings {
+
+	// 词义信息
+	for _, meaning := range w.WordMeanings {
 		if len(meaning.PartOfSpeech) > 0 {
-			str += cyan(meaning.PartOfSpeech)
+			segments = append(segments, cmdutil.MarkupSegment{
+				Text: meaning.PartOfSpeech,
+				Type: cmdutil.MarkupNote,
+			})
 		}
 		if len(meaning.Definitions) > 0 {
-			str += meaning.Definitions
+			segments = append(segments, cmdutil.MarkupSegment{
+				Text: meaning.Definitions,
+				Type: cmdutil.MarkupText,
+			})
 		}
 		for _, s := range meaning.Examples {
-			str += "\n" + gray("eg. "+s)
+			segments = append(segments, cmdutil.MarkupSegment{
+				Text: "\n",
+				Type: cmdutil.MarkupText,
+			})
+			segments = append(segments, cmdutil.MarkupSegment{
+				Text: "eg. " + s,
+				Type: cmdutil.MarkupComment,
+			})
 		}
-		str += "\n"
+		segments = append(segments, cmdutil.MarkupSegment{
+			Text: "\n",
+			Type: cmdutil.MarkupText,
+		})
 	}
-	for _, usage := range f.Usages {
-		str += gray("eg. "+usage) + "\n"
+	// 例句信息
+	if len(w.Examples) > 0 {
+		for _, example := range w.Examples {
+			segments = append(segments, cmdutil.MarkupSegment{
+				Text: "\n",
+				Type: cmdutil.MarkupText,
+			})
+			segments = append(segments, cmdutil.MarkupSegment{
+				Text: "eg. " + example,
+				Type: cmdutil.MarkupComment,
+			})
+		}
 	}
-	return str
+	// 结尾换行
+	segments = append(segments, cmdutil.MarkupSegment{
+		Text: "\n",
+		Type: cmdutil.MarkupText,
+	})
+
+	return segments
+}
+
+func (f *WordItem) RenderString() string {
+	// 使用默认渲染器保持向后兼容
+	defaultRenderer := cmdutil.NewRenderer(true)
+	return defaultRenderer.Render(f.Format())
 }
 
 func (f *WordItem) RawString() string {

@@ -17,13 +17,11 @@ type DictMWebster struct {
 	key string
 }
 
-func NewDictMWebster(params map[string]interface{}) (*DictMWebster, error) {
-	var ok bool
-	dict := &DictMWebster{}
-	if dict.key, ok = params[config.DictConfigMWebsterKey].(string); !ok {
-		return nil, errors.New("missing mwebster.key in params")
+func NewDictMWebster(config *config.MWebsterConfig) (*DictMWebster, error) {
+	if config == nil || config.Key == "" {
+		return nil, errors.New("mwebster config with key is required")
 	}
-	return dict, nil
+	return &DictMWebster{key: config.Key}, nil
 }
 
 func (d *DictMWebster) Search(word string) (*entity.WordItem, error) {

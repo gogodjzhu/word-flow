@@ -6,7 +6,6 @@ import (
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil/tui/tui_list"
 	"github.com/gogodjzhu/word-flow/pkg/dict"
-	dictyoudao "github.com/gogodjzhu/word-flow/pkg/dict/youdao"
 	"github.com/spf13/cobra"
 )
 
@@ -46,11 +45,6 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 						Keys:            []string{"enter"},
 						FullDescription: "look up selected word",
 						Callback: func(selectedOption tui_list.OptionEntity) []tui_list.OptionEntity {
-							dictionary, err := dictyoudao.NewDictYoudao(cfg.Dict.Parameters)
-							if err != nil {
-								_, _ = fmt.Fprintln(f.IOStreams.Out, "[Err] init dictionary failed")
-								return nil
-							}
 							words, err := notebook.ListNotes()
 							if err != nil {
 								_, _ = fmt.Fprintln(f.IOStreams.Out, "[Err] list words failed")
@@ -65,12 +59,40 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 										hint:  fmt.Sprintf("lookupTimes:%d", word.LookupTimes),
 									})
 								} else {
-									wordItem, _ := dictionary.Search(word.Word)
-									updateOptions[i] = tui_list.NewOption(&wordItemOptions{
-										item:  word.WordItemId,
-										title: wordItem.Word,
-										hint:  wordItem.RawString(),
-									})
+									// Check if cached translation exists
+									if word.Translation != "" {
+										updateOptions[i] = tui_list.NewOption(&wordItemOptions{
+											item:  word.WordItemId,
+											title: word.Word,
+											hint:  word.Translation,
+										})
+									} else {
+										// Fallback to live API call if no cached translation
+										dictionary, err := dict.NewDict(cfg.Dict)
+										if err != nil {
+											_, _ = fmt.Fprintln(f.IOStreams.Out, "[Err] init dictionary failed")
+											return nil
+										}
+										wordItem, err := dictionary.Search(word.Word)
+										if err != nil {
+											_, _ = fmt.Fprintln(f.IOStreams.Out, "[Err] search word failed")
+											updateOptions[i] = tui_list.NewOption(&wordItemOptions{
+												item:  word.WordItemId,
+												title: word.Word,
+												hint:  fmt.Sprintf("lookupTimes:%d", word.LookupTimes),
+											})
+										} else {
+											// Cache the translation for future use
+											if _, err := notebook.Mark(word.Word, dict.Learning, wordItem); err != nil {
+												_, _ = fmt.Fprintln(f.IOStreams.Out, "[Err] cache translation failed")
+											}
+											updateOptions[i] = tui_list.NewOption(&wordItemOptions{
+												item:  word.WordItemId,
+												title: word.Word,
+												hint:  wordItem.RawString(),
+											})
+										}
+									}
 								}
 							}
 							return updateOptions
@@ -81,7 +103,7 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 						ShortDescription: "delete",
 						FullDescription:  "delete selected word",
 						Callback: func(selectedOption tui_list.OptionEntity) []tui_list.OptionEntity {
-							if _, err := notebook.Mark(selectedOption.Title(), dict.Delete); err != nil {
+							if _, err := notebook.Mark(selectedOption.Title(), dict.Delete, nil); err != nil {
 								fmt.Fprintln(f.IOStreams.Out, "[Err] mark word failed")
 							}
 							words, err := notebook.ListNotes()
