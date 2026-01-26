@@ -51,6 +51,7 @@ func (d *DictLLM) Search(word string) (*entity.WordItem, error) {
 		return nil, errors.New("empty result from LLM")
 	}
 
+	result.Source = "llm"
 	return result, nil
 }
 

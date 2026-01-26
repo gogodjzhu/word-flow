@@ -2,7 +2,10 @@ package dict
 
 import (
 	"fmt"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/dustin/go-humanize"
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil/tui/tui_list"
 	"github.com/gogodjzhu/word-flow/pkg/dict"
@@ -34,10 +37,14 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 				}
 				initOptions := make([]tui_list.OptionEntity, len(notes))
 				for i, note := range notes {
+					hint := fmt.Sprintf("lookupTimes:%d", note.LookupTimes)
+					if note.LastLookupTime > 0 {
+						hint = fmt.Sprintf("%s, last: %s", hint, humanize.Time(time.Unix(note.LastLookupTime, 0)))
+					}
 					initOptions[i] = tui_list.NewOption(&wordItemOptions{
 						item:  note.WordItemId,
 						title: note.Word,
-						hint:  fmt.Sprintf("lookupTimes:%d", note.LookupTimes),
+						hint:  hint,
 					})
 				}
 				model = tui_list.NewApp("Words review", initOptions, []tui_list.CallbackFunc{
@@ -53,10 +60,14 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 							updateOptions := make([]tui_list.OptionEntity, len(words))
 							for i, word := range words {
 								if word.WordItemId != selectedOption.Entity().(string) {
+									hint := fmt.Sprintf("lookupTimes:%d", word.LookupTimes)
+									if word.LastLookupTime > 0 {
+										hint = fmt.Sprintf("%s, last: %s", hint, humanize.Time(time.Unix(word.LastLookupTime, 0)))
+									}
 									updateOptions[i] = tui_list.NewOption(&wordItemOptions{
 										item:  word.WordItemId,
 										title: word.Word,
-										hint:  fmt.Sprintf("lookupTimes:%d", word.LookupTimes),
+										hint:  hint,
 									})
 								} else {
 									// Check if cached translation exists
@@ -76,10 +87,14 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 										wordItem, err := dictionary.Search(word.Word)
 										if err != nil {
 											_, _ = fmt.Fprintln(f.IOStreams.Out, "[Err] search word failed")
+											hint := fmt.Sprintf("lookupTimes:%d", word.LookupTimes)
+											if word.LastLookupTime > 0 {
+												hint = fmt.Sprintf("%s, last: %s", hint, humanize.Time(time.Unix(word.LastLookupTime, 0)))
+											}
 											updateOptions[i] = tui_list.NewOption(&wordItemOptions{
 												item:  word.WordItemId,
 												title: word.Word,
-												hint:  fmt.Sprintf("lookupTimes:%d", word.LookupTimes),
+												hint:  hint,
 											})
 										} else {
 											// Cache the translation for future use
@@ -113,10 +128,14 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 							}
 							updateOptions := make([]tui_list.OptionEntity, len(words))
 							for i, word := range words {
+								hint := fmt.Sprintf("lookupTimes:%d", word.LookupTimes)
+								if word.LastLookupTime > 0 {
+									hint = fmt.Sprintf("%s, last: %s", hint, humanize.Time(time.Unix(word.LastLookupTime, 0)))
+								}
 								updateOptions[i] = tui_list.NewOption(&wordItemOptions{
 									item:  word.WordItemId,
 									title: word.Word,
-									hint:  fmt.Sprintf("lookupTimes:%d", word.LookupTimes),
+									hint:  hint,
 								})
 							}
 							return updateOptions

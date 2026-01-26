@@ -61,6 +61,7 @@ func (d *DictEcdict) Search(word string) (*entity.WordItem, error) {
 	result := &entity.WordItem{
 		ID:            entity.WordId(wordItem.Word),
 		Word:          wordItem.Word,
+		Source:        "ecdict",
 		WordPhonetics: make([]*entity.WordPhonetic, 0),
 		WordMeanings:  make([]*entity.WordMeaning, 0),
 	}

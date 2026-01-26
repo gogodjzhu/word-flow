@@ -65,6 +65,7 @@ func (d *DictEtymonline) Search(word string) (*entity.WordItem, error) {
 		return &entity.WordItem{
 			ID:           entity.WordId(word),
 			Word:         word,
+			Source:       "etymonline",
 			WordMeanings: meanings,
 		}, nil
 	})

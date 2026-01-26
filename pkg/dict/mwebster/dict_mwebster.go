@@ -47,6 +47,7 @@ func (d *DictMWebster) Search(word string) (*entity.WordItem, error) {
 		var wordItem entity.WordItem
 		wordItem.ID = entity.WordId(word)
 		wordItem.Word = word
+		wordItem.Source = "mwebster"
 		wordItem.WordPhonetics = make([]*entity.WordPhonetic, 0)
 		wordItem.WordMeanings = make([]*entity.WordMeaning, 0)
 		for _, wordStructure := range wordStructures {

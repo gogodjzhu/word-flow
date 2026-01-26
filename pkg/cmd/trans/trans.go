@@ -147,10 +147,7 @@ func readFromStdin(r io.Reader) (string, error) {
 	}
 
 	// Remove trailing newline if present
-	text := result.String()
-	if strings.HasSuffix(text, "\n") {
-		text = strings.TrimSuffix(text, "\n")
-	}
+	text := strings.TrimSuffix(result.String(), "\n")
 
 	return text, nil
 }

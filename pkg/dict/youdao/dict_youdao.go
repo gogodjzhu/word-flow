@@ -65,8 +65,9 @@ func (d *DictYoudao) Search(word string) (*entity.WordItem, error) {
 		if formatWordMeanings(trans) == nil || len(formatWordMeanings(trans)) == 0 {
 			// normalize trans: collapse whitespace for a clean single-line definition
 			return &entity.WordItem{
-				ID:   entity.WordId(keyword),
-				Word: keyword,
+				ID:     entity.WordId(keyword),
+				Word:   keyword,
+				Source: "youdao",
 				//WordPhonetics: formatPhonetic(keyword, enPhonetic, usPhonetic),
 				WordMeanings: []*entity.WordMeaning{
 					{
@@ -79,9 +80,10 @@ func (d *DictYoudao) Search(word string) (*entity.WordItem, error) {
 			return &entity.WordItem{
 				ID:            entity.WordId(keyword),
 				Word:          keyword,
+				Source:        "youdao",
 				WordPhonetics: formatPhonetic(keyword, enPhonetic, usPhonetic),
 				WordMeanings:  formatWordMeanings(trans),
-				Examples: usages,
+				Examples:      usages,
 			}, nil
 		}
 	})

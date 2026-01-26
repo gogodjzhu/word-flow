@@ -11,6 +11,7 @@ import (
 type WordItem struct {
 	ID            string          `json:"id" yaml:"id"`
 	Word          string          `json:"word" yaml:"word"`
+	Source        string          `json:"source" yaml:"source"`
 	WordPhonetics []*WordPhonetic `json:"word_phonetics" yaml:"-"`
 	WordMeanings  []*WordMeaning  `json:"word_meanings" yaml:"-"`
 	// mixed examples
@@ -53,6 +54,12 @@ func (w *WordItem) Format() []cmdutil.MarkupSegment {
 		Text: w.Word,
 		Type: cmdutil.MarkupTitle,
 	})
+	if len(w.Source) > 0 {
+		segments = append(segments, cmdutil.MarkupSegment{
+			Text: "  (" + w.Source + ")",
+			Type: cmdutil.MarkupNote,
+		})
+	}
 	segments = append(segments, cmdutil.MarkupSegment{
 		Text: "\n",
 		Type: cmdutil.MarkupText,
