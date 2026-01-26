@@ -26,15 +26,45 @@ const (
 	LLM        Endpoint = "llm"
 )
 
+type DictInfo struct {
+	Name        string
+	Description string
+}
+
+// AvailableDictionaries returns all supported dictionaries with their descriptions.
+func AvailableDictionaries() []DictInfo {
+	return []DictInfo{
+		{
+			Name:        string(Youdao),
+			Description: "[Free] Online dictionary providing concise definitions and translations. @See https://www.youdao.com/",
+		},
+		{
+			Name:        string(Etymonline),
+			Description: "[Free] Online etymology dictionary for word origins and history. See https://www.etymonline.com/",
+		},
+		{
+			Name:        string(Ecdict),
+			Description: "[Free] Offline dictionary with a massive local database. See https://github.com/skywind3000/ECDICT/",
+		},
+		{
+			Name:        string(MWebster),
+			Description: "Authoritative English dictionary from Merriam-Webster, requires Dictionary API key. See https://dictionaryapi.com/",
+		},
+		{
+			Name:        string(LLM),
+			Description: "AI-powered definitions and explanations using Large Language Models, requires LLM API key and endpoint. See your LLM provider for details.",
+		},
+	}
+}
+
 // AvailableEndpoints returns all supported dictionary endpoint identifiers.
 func AvailableEndpoints() []string {
-	return []string{
-		string(Youdao),
-		string(Etymonline),
-		string(Ecdict),
-		string(MWebster),
-		string(LLM),
+	dicts := AvailableDictionaries()
+	endpoints := make([]string, len(dicts))
+	for i, d := range dicts {
+		endpoints[i] = d.Name
 	}
+	return endpoints
 }
 
 func NewDict(conf *config.DictConfig) (Dict, error) {

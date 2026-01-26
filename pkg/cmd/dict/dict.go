@@ -25,7 +25,10 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// If list flag is provided, print available dictionary types and exit.
 			if list {
-				_, _ = fmt.Fprintln(f.IOStreams.Out, strings.Join(dict.AvailableEndpoints(), ", "))
+				dicts := dict.AvailableDictionaries()
+				for _, d := range dicts {
+					_, _ = fmt.Fprintf(f.IOStreams.Out, "%-12s - %s\n", d.Name, d.Description)
+				}
 				return nil
 			}
 			/* lookup the word in the dictionary */

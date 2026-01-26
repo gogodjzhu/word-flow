@@ -87,6 +87,12 @@ type LLMConfig struct {
 }
 
 func (c *LLMConfig) Validate() error {
+	if c.URL == "" {
+		return errors.New("llm.url is required")
+	}
+	if c.Model == "" {
+		return errors.New("llm.model is required")
+	}
 	if c.ApiKey == "" {
 		return errors.New("llm.api_key is required")
 	}
@@ -101,8 +107,6 @@ func (c *LLMConfig) Validate() error {
 
 func (c *LLMConfig) GetDefaults() interface{} {
 	return map[string]interface{}{
-		"llm.url":         "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-		"llm.model":       "glm-4",
 		"llm.timeout":     "30s",
 		"llm.max_tokens":  2000,
 		"llm.temperature": 0.3,
