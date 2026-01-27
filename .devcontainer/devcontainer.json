@@ -14,7 +14,9 @@
 	"postCreateCommand": "bash ./.devcontainer/init.sh",
 	"runArgs": [
 		"--name",
-		"word-flow"
+		"word-flow",
+		"-p",
+		"4096:4096"
 	],
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	"remoteUser": "root",
