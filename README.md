@@ -22,7 +22,8 @@ Word-Flow is a powerful terminal-based dictionary and vocabulary learning applic
 
 - **Vocabulary Notebook**:
   - Save words to your local notebook.
-  - Review words (Future support: spaced repetition and exam mode).
+  - Review and manage words in a TUI (open cached translations, delete items).
+  - Spaced repetition review with **FSRS** scheduling.
 
 - **Cross-Platform**: Works on macOS, Linux, and Windows.
 
@@ -93,9 +94,14 @@ echo "Software engineering is the application of engineering to the development 
 
 Words looked up via the `dict` command are automatically saved to your notebook.
 
-Review words in your notebook:
+Review words in your notebook (TUI list):
 ```bash
 wordflow notebook
+```
+
+Start a spaced-repetition exam session for due words:
+```bash
+wordflow notebook -o exam
 ```
 
 ## Configuration
@@ -130,6 +136,16 @@ dict:
     
     # ECDICT (Offline)
     ecdict.dbfilename: "/path/to/stardict.db"
+
+notebook:
+  default: default
+  parameters:
+    # Notebook storage
+    notebook.basepath: "~/.config/wordflow/notebooks"
+
+    # FSRS (spaced repetition)
+    fsrs.max_reviews_per_session: 50
+    fsrs.new_cards_per_day: 20
 ```
 
 ## License

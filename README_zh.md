@@ -22,7 +22,8 @@ Word-Flow 是一个专为开发者打造的强大终端字典与词汇学习工�
 
 - **单词本与记忆**:
   - 将生词保存到本地单词本。
-  - 复习单词（未来支持：基于间隔重复算法的复习和测验模式）。
+  - TUI 列表复习与管理（查看已缓存翻译、删除条目）。
+  - 基于 **FSRS** 间隔重复算法的复习计划。
 
 - **跨平台支持**: 完美运行于 macOS, Linux 和 Windows。
 
@@ -93,9 +94,14 @@ echo "Software engineering is the application of engineering to the development 
 
 使用 `dict` 命令查询的单词会自动保存到您的单词本中。
 
-复习单词：
+复习单词（TUI 列表）：
 ```bash
 wordflow notebook
+```
+
+开始一次间隔重复测验（仅抽取到期单词）：
+```bash
+wordflow notebook -o exam
 ```
 
 ## 配置说明
@@ -130,6 +136,16 @@ dict:
     
     # ECDICT (离线词库)
     ecdict.dbfilename: "/path/to/stardict.db"
+
+notebook:
+  default: default
+  parameters:
+    # 单词本存储路径
+    notebook.basepath: "~/.config/wordflow/notebooks"
+
+    # FSRS（间隔重复）
+    fsrs.max_reviews_per_session: 50
+    fsrs.new_cards_per_day: 20
 ```
 
 ## 许可证
