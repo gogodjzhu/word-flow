@@ -33,14 +33,15 @@ type WordMeaning struct {
 }
 
 type WordNote struct {
-	WordItemId     string `json:"word_id" yaml:"word_id"`
-	Word           string `json:"word" yaml:"word"`
-	LookupTimes    int    `json:"lookup_times" yaml:"lookup_times"`
-	CreateTime     int64  `json:"create_time" yaml:"create_time"`
-	LastLookupTime int64  `json:"last_lookup_time" yaml:"last_lookup_time"`
-	Translation    string `json:"translation,omitempty" yaml:"translation,omitempty"`
+	WordItemId     string   `json:"word_id" yaml:"word_id"`
+	Word           string   `json:"word" yaml:"word"`
+	LookupTimes    int      `json:"lookup_times" yaml:"lookup_times"`
+	CreateTime     int64    `json:"create_time" yaml:"create_time"`
+	LastLookupTime int64    `json:"last_lookup_time" yaml:"last_lookup_time"`
+	Translation    string   `json:"translation,omitempty" yaml:"translation,omitempty"`
+	Examples       []string `json:"examples,omitempty" yaml:"examples,omitempty"`
 	// FSRS fields
-	FSRSCard   *FSRSCard `json:"fsrs_card,omitempty" yaml:"-"`
+	FSRSCard   *FSRSCard `json:"fsrs_card,omitempty" yaml:"fsrs_card,omitempty"`
 	LastRating int       `json:"last_rating,omitempty" yaml:"last_rating"`
 	NextReview int64     `json:"next_review" yaml:"next_review"`
 }
@@ -168,6 +169,9 @@ func (f *WordItem) RawString() string {
 // IsDueForReview checks if the word note is due for FSRS review
 func (n *WordNote) IsDueForReview() bool {
 	if n.FSRSCard == nil {
+		if n.NextReview > 0 {
+			return time.Now().Unix() >= n.NextReview
+		}
 		return true // New words are always due
 	}
 	return time.Now().Unix() >= n.NextReview
@@ -183,6 +187,5 @@ func (n *WordNote) GetDefinition() string {
 
 // GetExamples returns example sentences (placeholder for now)
 func (n *WordNote) GetExamples() []string {
-	// TODO: Extract examples from translation or WordItem
-	return []string{}
+	return n.Examples
 }

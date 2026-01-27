@@ -185,13 +185,9 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 				if examResult, ok := result.(tui_exam.Model); ok {
 					results := examResult.GetResults()
 
-					// Save updated FSRS cards
-					for _, word := range results.Words {
-						if word != nil && word.FSRSCard != nil {
-							if err := notebook.UpdateFSRSCard(word.WordItemId, word.FSRSCard); err != nil {
-								_, _ = fmt.Fprintf(f.IOStreams.Out, "[Err] Failed to save FSRS card for %s: %v\n", word.Word, err)
-							}
-						}
+					// Save updated notes and FSRS cards
+					if err := notebook.SaveExamResults(results.Words); err != nil {
+						_, _ = fmt.Fprintf(f.IOStreams.Out, "[Err] Failed to save exam results: %v\n", err)
 					}
 
 					// Show summary

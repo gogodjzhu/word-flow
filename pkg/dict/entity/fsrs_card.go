@@ -9,20 +9,20 @@ import (
 
 // FSRSCard represents an FSRS card in the database
 type FSRSCard struct {
-	WordId        string         `gorm:"word_id;primaryKey" json:"word_id"`
-	Notebook      string         `gorm:"notebook" json:"notebook"`
-	Due           time.Time      `gorm:"due" json:"due"`
-	Stability     float64        `gorm:"stability" json:"stability"`
-	Difficulty    float64        `gorm:"difficulty" json:"difficulty"`
-	ElapsedDays   uint64         `gorm:"elapsed_days" json:"elapsed_days"`
-	ScheduledDays uint64         `gorm:"scheduled_days" json:"scheduled_days"`
-	Reps          uint64         `gorm:"reps" json:"reps"`
-	Lapses        uint64         `gorm:"lapses" json:"lapses"`
-	State         int8           `gorm:"state" json:"state"`
-	LastReview    time.Time      `gorm:"last_review" json:"last_review"`
-	CreatedAt     time.Time      `gorm:"created_at" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"updated_at" json:"updated_at"`
-	DeletedAt     gorm.DeletedAt `gorm:"deleted_at" json:"-"`
+	WordId        string         `gorm:"word_id;primaryKey" json:"word_id" yaml:"word_id"`
+	Notebook      string         `gorm:"notebook" json:"notebook" yaml:"notebook"`
+	Due           time.Time      `gorm:"due" json:"due" yaml:"due"`
+	Stability     float64        `gorm:"stability" json:"stability" yaml:"stability"`
+	Difficulty    float64        `gorm:"difficulty" json:"difficulty" yaml:"difficulty"`
+	ElapsedDays   uint64         `gorm:"elapsed_days" json:"elapsed_days" yaml:"elapsed_days"`
+	ScheduledDays uint64         `gorm:"scheduled_days" json:"scheduled_days" yaml:"scheduled_days"`
+	Reps          uint64         `gorm:"reps" json:"reps" yaml:"reps"`
+	Lapses        uint64         `gorm:"lapses" json:"lapses" yaml:"lapses"`
+	State         int8           `gorm:"state" json:"state" yaml:"state"`
+	LastReview    time.Time      `gorm:"last_review" json:"last_review" yaml:"last_review"`
+	CreatedAt     time.Time      `gorm:"created_at" json:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time      `gorm:"updated_at" json:"updated_at" yaml:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"deleted_at" json:"-" yaml:"-"`
 }
 
 // TableName returns the table name for FSRSCard

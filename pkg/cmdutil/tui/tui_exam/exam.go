@@ -204,6 +204,11 @@ func (m Model) rateWord(rating fsrs.Rating) (tea.Model, tea.Cmd) {
 	}
 
 	currentWord := m.words[m.currentIdx]
+	if currentWord.FSRSCard == nil {
+		newCard := fsrs.NewCard(currentWord.WordItemId, "")
+		currentWord.FSRSCard = &entity.FSRSCard{}
+		currentWord.FSRSCard.FromFSRSCard(newCard)
+	}
 
 	// Update FSRS card if it exists
 	if currentWord.FSRSCard != nil {
