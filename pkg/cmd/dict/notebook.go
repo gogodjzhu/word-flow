@@ -7,8 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dustin/go-humanize"
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
+	"github.com/gogodjzhu/word-flow/pkg/cmdutil/tui/tui_exam"
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil/tui/tui_list"
 	"github.com/gogodjzhu/word-flow/pkg/dict"
+	"github.com/gogodjzhu/word-flow/pkg/dict/fsrs"
 	"github.com/spf13/cobra"
 )
 
@@ -143,12 +145,76 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 					},
 				})
 			case "exam":
-				_ = fmt.Errorf("not implemented")
+				// Get due words for review
+				dueWords, err := notebook.GetDueWords()
+				if err != nil {
+					return err
+				}
+
+				if len(dueWords) == 0 {
+					_, _ = fmt.Fprintln(f.IOStreams.Out, "🎉 No words due for review!")
+					_, _ = fmt.Fprintln(f.IOStreams.Out, "💡 Add some words to your notebook first using 'wordflow notebook -o review'")
+					return nil
+				}
+
+				// Limit session size based on configuration
+				maxReviews := 50 // default
+				if max, ok := cfg.Notebook.Parameters["fsrs.max_reviews_per_session"].(int); ok {
+					maxReviews = max
+				}
+
+				if len(dueWords) > maxReviews {
+					dueWords = dueWords[:maxReviews]
+					_, _ = fmt.Fprintf(f.IOStreams.Out, "Limited to %d words for this session\n", maxReviews)
+				}
+
+				// Initialize FSRS scheduler
+				scheduler := fsrs.NewScheduler()
+
+				// Create exam TUI model
+				examModel := tui_exam.NewModel(dueWords, scheduler)
+
+				// Run the exam
+				program := tea.NewProgram(examModel, tea.WithAltScreen())
+				result, err := program.Run()
+				if err != nil {
+					return err
+				}
+
+				// Get results and save updated cards
+				if examResult, ok := result.(tui_exam.Model); ok {
+					results := examResult.GetResults()
+
+					// Save updated FSRS cards
+					for _, word := range results.Words {
+						if word != nil && word.FSRSCard != nil {
+							if err := notebook.UpdateFSRSCard(word.WordItemId, word.FSRSCard); err != nil {
+								_, _ = fmt.Fprintf(f.IOStreams.Out, "[Err] Failed to save FSRS card for %s: %v\n", word.Word, err)
+							}
+						}
+					}
+
+					// Show summary
+					fmt.Fprintf(f.IOStreams.Out, "\n✅ Session completed!\n")
+					fmt.Fprintf(f.IOStreams.Out, "   Reviewed: %d words\n", results.Completed)
+					if results.Skipped > 0 {
+						fmt.Fprintf(f.IOStreams.Out, "   Skipped: %d words\n", results.Skipped)
+					}
+					fmt.Fprintf(f.IOStreams.Out, "   Duration: %s\n", results.Duration.Round(time.Second))
+				} else {
+					fmt.Fprintf(f.IOStreams.Out, "[Warning] Failed to get exam results\n")
+				}
 			default:
 				return fmt.Errorf("unknown operation: %s", op)
 			}
-			_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
-			return err
+
+			// Only run TUI program if model is not nil (for "review" operation)
+			if model != nil {
+				_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
+				return err
+			}
+
+			return nil
 		},
 		PostRunE: func(cmd *cobra.Command, args []string) error {
 			if notebook == cfg.Notebook.Default {

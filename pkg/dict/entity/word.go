@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"strings"
+	"time"
 
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
 )
@@ -38,6 +39,10 @@ type WordNote struct {
 	CreateTime     int64  `json:"create_time" yaml:"create_time"`
 	LastLookupTime int64  `json:"last_lookup_time" yaml:"last_lookup_time"`
 	Translation    string `json:"translation,omitempty" yaml:"translation,omitempty"`
+	// FSRS fields
+	FSRSCard   *FSRSCard `json:"fsrs_card,omitempty" yaml:"-"`
+	LastRating int       `json:"last_rating,omitempty" yaml:"last_rating"`
+	NextReview int64     `json:"next_review" yaml:"next_review"`
 }
 
 func WordId(word string) string {
@@ -158,4 +163,26 @@ func (f *WordItem) RawString() string {
 		}
 	}
 	return str
+}
+
+// IsDueForReview checks if the word note is due for FSRS review
+func (n *WordNote) IsDueForReview() bool {
+	if n.FSRSCard == nil {
+		return true // New words are always due
+	}
+	return time.Now().Unix() >= n.NextReview
+}
+
+// GetDefinition returns the primary definition from translation
+func (n *WordNote) GetDefinition() string {
+	if n.Translation != "" {
+		return n.Translation
+	}
+	return "No definition available"
+}
+
+// GetExamples returns example sentences (placeholder for now)
+func (n *WordNote) GetExamples() []string {
+	// TODO: Extract examples from translation or WordItem
+	return []string{}
 }

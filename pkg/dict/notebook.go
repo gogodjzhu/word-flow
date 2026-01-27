@@ -26,6 +26,10 @@ type Notebooks interface {
 	Mark(word string, action Action, translation *entity.WordItem) (*entity.WordNote, error)
 	ListNotes() ([]*entity.WordNote, error)
 	ListNotebooks() ([]string, error)
+	// FSRS methods
+	GetDueWords() ([]*entity.WordNote, error)
+	UpdateFSRSCard(wordId string, card *entity.FSRSCard) error
+	SaveExamResults(results []*entity.WordNote) error
 }
 
 func OpenNotebook(conf *config.NotebookConfig) (Notebooks, error) {
@@ -186,6 +190,89 @@ func (f *fileNotebook) writeNote(notes []*entity.WordNote) error {
 	return nil
 }
 
+func (f *fileNotebook) GetDueWords() ([]*entity.WordNote, error) {
+	notes, err := f.readNote()
+	if err != nil {
+		return nil, err
+	}
+
+	var dueWords []*entity.WordNote
+
+	for _, note := range notes {
+		if note.IsDueForReview() {
+			dueWords = append(dueWords, note)
+		}
+	}
+
+	// Sort by priority: new words first, then by due time
+	sort.SliceStable(dueWords, func(i, j int) bool {
+		iNew := dueWords[i].FSRSCard == nil
+		jNew := dueWords[j].FSRSCard == nil
+
+		if iNew != jNew {
+			return iNew // New words (nil FSRSCard) come first
+		}
+
+		// For existing cards, sort by next review time
+		if dueWords[i].NextReview != dueWords[j].NextReview {
+			return dueWords[i].NextReview < dueWords[j].NextReview
+		}
+
+		// Finally, sort by creation time
+		return dueWords[i].CreateTime > dueWords[j].CreateTime
+	})
+
+	return dueWords, nil
+}
+
+func (f *fileNotebook) UpdateFSRSCard(wordId string, card *entity.FSRSCard) error {
+	notes, err := f.readNote()
+	if err != nil {
+		return err
+	}
+
+	updated := false
+	for _, note := range notes {
+		if note.WordItemId == wordId {
+			note.FSRSCard = card
+			note.NextReview = card.Due.Unix()
+			updated = true
+			break
+		}
+	}
+
+	if !updated {
+		return errors.New("word not found in notebook")
+	}
+
+	return f.writeNote(notes)
+}
+
+func (f *fileNotebook) SaveExamResults(results []*entity.WordNote) error {
+	if len(results) == 0 {
+		return nil
+	}
+
+	notes, err := f.readNote()
+	if err != nil {
+		return err
+	}
+
+	// Update notes with exam results
+	resultMap := make(map[string]*entity.WordNote)
+	for _, result := range results {
+		resultMap[result.WordItemId] = result
+	}
+
+	for i, note := range notes {
+		if result, exists := resultMap[note.WordItemId]; exists {
+			notes[i] = result
+		}
+	}
+
+	return f.writeNote(notes)
+}
+
 type sqlNotebook struct {
 	db           *gorm.DB
 	notebookName string
@@ -277,4 +364,40 @@ func (s *sqlNotebook) ListNotebooks() ([]string, error) {
 		return nil, errors.Wrap(tx.Error, "[Err] list notebook failed")
 	}
 	return notebooks, nil
+}
+
+func (s *sqlNotebook) GetDueWords() ([]*entity.WordNote, error) {
+	var notes []*SQLNotebookWordNote
+	tx := s.db.Find(&notes, "notebook = ?", s.notebookName)
+	if tx.Error != nil {
+		return nil, errors.Wrap(tx.Error, "[Err] get due words failed")
+	}
+
+	var wordNotes []*entity.WordNote
+	for _, note := range notes {
+		wordNote := note.toWordNote()
+		if wordNote.IsDueForReview() {
+			wordNotes = append(wordNotes, wordNote)
+		}
+	}
+	return wordNotes, nil
+}
+
+func (s *sqlNotebook) UpdateFSRSCard(wordId string, card *entity.FSRSCard) error {
+	tx := s.db.Where("notebook = ? AND word_id = ?", s.notebookName, wordId).Updates(card)
+	if tx.Error != nil {
+		return errors.Wrap(tx.Error, "[Err] update fsrs card failed")
+	}
+	return nil
+}
+
+func (s *sqlNotebook) SaveExamResults(results []*entity.WordNote) error {
+	for _, result := range results {
+		if result.FSRSCard != nil {
+			if err := s.UpdateFSRSCard(result.WordItemId, result.FSRSCard); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

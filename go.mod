@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.13.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.17.0
+	github.com/open-spaced-repetition/go-fsrs v1.2.1
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1

@@ -132,6 +132,8 @@ type NotebookConfig struct {
 
 const (
 	NotebookConfigNotebookBasepath = "notebook.basepath"
+	NotebookConfigFSRSMaxReviews   = "fsrs.max_reviews_per_session"
+	NotebookConfigFSRSLimit        = "fsrs.new_cards_per_day"
 )
 
 var defaultConfig = Config{
@@ -144,8 +146,6 @@ var defaultConfig = Config{
 		Default: "youdao",
 		Parameters: map[string]interface{}{
 			DictConfigEcdictDbfilename: filepath.Join(configDir(), "stardict.db"),
-			DictConfigLLMUrl:           "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-			DictConfigLLMModel:         "glm-4",
 			DictConfigLLMTimeout:       "30s",
 			DictConfigLLMMaxTokens:     2000,
 			DictConfigLLMTemperature:   0.3,
@@ -155,6 +155,8 @@ var defaultConfig = Config{
 		Default: "default",
 		Parameters: map[string]interface{}{
 			NotebookConfigNotebookBasepath: filepath.Join(configDir(), "notebooks"),
+			NotebookConfigFSRSMaxReviews:   50,
+			NotebookConfigFSRSLimit:        20,
 		},
 	},
 }
