@@ -63,7 +63,7 @@ func TestFileNotebook_readNote(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &fileNotebook{
-				directory: tt.fields.filename,
+				filename: tt.fields.filename,
 			}
 			if tt.preFunc != nil && !tt.preFunc() {
 				t.Error("preFunc() failed")
@@ -134,7 +134,7 @@ func TestFileNotebook_writeNote(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &fileNotebook{
-				directory: tt.fields.filename,
+				filename: tt.fields.filename,
 			}
 			if tt.preFunc != nil && !tt.preFunc() {
 				t.Error("preFunc() failed")
