@@ -179,13 +179,30 @@ func (c *Client) TranslateAndExplain(text string) (*entity.WordItem, error) {
 - **词性固定为**: 'sent.' (句子)
 - **不提供示例**
 
-## 2. 输出约束 (必须严格遵守)
+## 2. 函数调用约束 (极其重要)
+
+**translate_and_explain 函数的 arguments 字段必须是有效的 JSON 对象字符串，格式如下：**
+
+{
+  "input_type": "word|phrase|sentence", 
+  "original_text": "原始内容",
+  "phonetics": [...],
+  "meanings": [...]
+}
+
+**绝对禁止：**
+- arguments 不能以方括号 [] 开头或结尾
+- arguments 不能是数组格式
+- arguments 不能包含任何无效的 JSON 语法
+- arguments 前后不能有额外的文本或标记
+
+## 3. 输出约束 (必须严格遵守)
 
 1.  **必须使用 'translate_and_explain' 函数返回结果**
 2.  **返回内容只能是一次函数调用**
     - 禁止输出任何额外文本, 解释, 提示语或自然语言内容
 3.  **返回结果必须是结构化, 可解析的数据**
-    - **根节点必须是 Object ({...})，严禁使用 Array ([...])**
+    - **arguments 字段必须是有效的 JSON 对象字符串，以 { 开始，以 } 结束**
     - [句子]翻译必须是直译，**不能**意译或改写
     - 字段含义清晰, 语义稳定
     - 不得省略规则要求的字段
@@ -297,6 +314,7 @@ func (c *Client) TranslateAndExplain(text string) (*entity.WordItem, error) {
 			return nil, errors.Wrap(err, "failed to read response body")
 		}
 		defer response.Body.Close()
+		println(string(bodyBytes))
 
 		var chatResponse ChatResponse
 		err = json.Unmarshal(bodyBytes, &chatResponse)

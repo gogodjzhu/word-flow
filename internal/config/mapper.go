@@ -35,6 +35,19 @@ func (cm *ConfigMapper) MapToEndpointConfig(endpoint string, parameters map[stri
 	configValue := reflect.New(configType).Elem()
 	config := configValue.Addr().Interface().(DictEndpointConfig)
 
+	return cm.mapToConfigValue(config, configValue, parameters)
+}
+
+// MapToConfig 将parameters自动映射到指定配置结构体
+func (cm *ConfigMapper) MapToConfig(config DictEndpointConfig, parameters map[string]interface{}) (DictEndpointConfig, error) {
+	configValue := reflect.ValueOf(config)
+	if configValue.Kind() != reflect.Ptr || configValue.Elem().Kind() != reflect.Struct {
+		return nil, errors.New("config must be a pointer to struct")
+	}
+	return cm.mapToConfigValue(config, configValue.Elem(), parameters)
+}
+
+func (cm *ConfigMapper) mapToConfigValue(config DictEndpointConfig, configValue reflect.Value, parameters map[string]interface{}) (DictEndpointConfig, error) {
 	// 获取默认值
 	defaults := config.GetDefaults()
 	var defaultsMap map[string]interface{}

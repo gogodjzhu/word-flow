@@ -94,11 +94,6 @@ var (
 			Foreground(lipgloss.Color("#FFFFFF")).
 			MarginTop(2)
 
-	selectedRatingStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#7D56F4")).
-				Background(lipgloss.Color("#FFFFFF")).
-				Bold(true)
-
 	infoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888888")).
 			MarginTop(1)
@@ -106,11 +101,20 @@ var (
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666")).
 			MarginTop(1)
-
-	progressStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FF00")).
-			Bold(true)
 )
+
+type ratingItem struct {
+	rating fsrs.Rating
+	name   string
+	desc   string
+}
+
+var ratingItems = []ratingItem{
+	{rating: fsrs.Again, name: "Again", desc: "Complete failure"},
+	{rating: fsrs.Hard, name: "Hard", desc: "Difficult recall"},
+	{rating: fsrs.Good, name: "Good", desc: "Moderate effort"},
+	{rating: fsrs.Easy, name: "Easy", desc: "Very easy"},
+}
 
 // Model represents the exam TUI model
 type Model struct {
@@ -204,11 +208,7 @@ func (m Model) rateWord(rating fsrs.Rating) (tea.Model, tea.Cmd) {
 	}
 
 	currentWord := m.words[m.currentIdx]
-	if currentWord.FSRSCard == nil {
-		newCard := fsrs.NewCard(currentWord.WordItemId, "")
-		currentWord.FSRSCard = &entity.FSRSCard{}
-		currentWord.FSRSCard.FromFSRSCard(newCard)
-	}
+	currentWord.FSRSCard = ensureFSRSCard(currentWord)
 
 	// Update FSRS card if it exists
 	if currentWord.FSRSCard != nil {
@@ -251,81 +251,50 @@ func (m Model) View() string {
 		return "Initializing..."
 	}
 
-	// Safety check
-	if m.currentIdx >= len(m.words) {
-		return m.renderSummary()
-	}
-
 	currentWord := m.words[m.currentIdx]
 
-	var content string
+	var content strings.Builder
 
 	// Title with progress
 	title := fmt.Sprintf("Vocabulary Review: %d/%d (%.1f%%)",
 		m.currentIdx+1, len(m.words),
 		float64(m.currentIdx+1)/float64(len(m.words))*100)
-	content += titleStyle.Render(title) + "\n\n"
+	content.WriteString(titleStyle.Render(title))
+	content.WriteString("\n\n")
 
 	// Current word
-	content += wordStyle.Render(currentWord.Word) + "\n"
+	content.WriteString(wordStyle.Render(currentWord.Word))
+	content.WriteString("\n")
 
 	// Separator
-	separatorWidth := min(max(m.width-4, 10), 50)
-	content += lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).
-		Render(strings.Repeat("─", separatorWidth)) + "\n"
+	content.WriteString(renderSeparator(m.width))
 
 	// Definition (hidden by default)
 	if m.showDef {
-		content += definitionStyle.Render(currentWord.GetDefinition()) + "\n"
+		content.WriteString(definitionStyle.Render(currentWord.GetDefinition()))
+		content.WriteString("\n")
 	} else {
-		content += definitionStyle.Render("[Press 'd' to show Definition]") + "\n"
+		content.WriteString(definitionStyle.Render("[Press 'd' to show Definition]"))
+		content.WriteString("\n")
 	}
 
 	// Examples (hidden by default)
 	if m.showEx {
-		examples := currentWord.GetExamples()
-		if len(examples) > 0 {
-			for _, example := range examples {
-				content += "\n" + exampleStyle.Render("  • "+example)
-			}
-			content += "\n"
-		}
+		content.WriteString(renderExamples(currentWord.GetExamples()))
 	} else {
-		content += exampleStyle.Render("[Press 'e' to show Examples]") + "\n"
+		content.WriteString(exampleStyle.Render("[Press 'e' to show Examples]"))
+		content.WriteString("\n")
 	}
 
 	// Separator
-	separatorWidth2 := min(max(m.width-4, 10), 50)
-	content += lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).
-		Render(strings.Repeat("─", separatorWidth2)) + "\n"
+	content.WriteString(renderSeparator(m.width))
 
 	// Rating options
-	content += ratingStyle.Render("How well did you know this word?") + "\n"
-	ratings := []struct {
-		rating fsrs.Rating
-		desc   string
-	}{
-		{fsrs.Again, "Complete failure"},
-		{fsrs.Hard, "Difficult recall"},
-		{fsrs.Good, "Moderate effort"},
-		{fsrs.Easy, "Very easy"},
-	}
-
-	for i, r := range ratings {
-		prefix := ""
+	content.WriteString(ratingStyle.Render("How well did you know this word?"))
+	content.WriteString("\n")
+	for i, item := range ratingItems {
 		ratingNum := i + 1
-		ratingName := "Again"
-		switch r.rating {
-		case fsrs.Again:
-			ratingName = "Again"
-		case fsrs.Hard:
-			ratingName = "Hard"
-		case fsrs.Good:
-			ratingName = "Good"
-		case fsrs.Easy:
-			ratingName = "Easy"
-		}
-		content += fmt.Sprintf("%s[%d] %s - %s\n", prefix, ratingNum, ratingName, r.desc)
+		content.WriteString(fmt.Sprintf("[%d] %s - %s\n", ratingNum, item.name, item.desc))
 	}
 
 	// Info section
@@ -334,11 +303,12 @@ func (m Model) View() string {
 		info := fmt.Sprintf("Last reviewed: %s | Streak: %d days",
 			humanize.Time(lastReview),
 			m.completed)
-		content += infoStyle.Render(info) + "\n"
+		content.WriteString(infoStyle.Render(info))
+		content.WriteString("\n")
 	}
 
 	// Help line
-	content += helpStyle.Render("[1-4: Rate] [d: Definition] [e: Examples] [s: Skip] [h: Help] [q: Quit]")
+	content.WriteString(helpStyle.Render("[1-4: Rate] [d: Definition] [e: Examples] [s: Skip] [h: Help] [q: Quit]"))
 
 	// Apply container style
 	container := lipgloss.NewStyle().
@@ -348,7 +318,7 @@ func (m Model) View() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#7D56F4"))
 
-	return container.Render(content)
+	return container.Render(content.String())
 }
 
 // renderSummary renders the session summary
@@ -449,4 +419,36 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func ensureFSRSCard(word *entity.WordNote) *entity.FSRSCard {
+	if word == nil {
+		return nil
+	}
+	if word.FSRSCard != nil {
+		return word.FSRSCard
+	}
+	newCard := fsrs.NewCard(word.WordItemId, "")
+	fsrsCard := &entity.FSRSCard{}
+	fsrsCard.FromFSRSCard(newCard)
+	return fsrsCard
+}
+
+func renderSeparator(width int) string {
+	separatorWidth := min(max(width-4, 10), 50)
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).
+		Render(strings.Repeat("─", separatorWidth)) + "\n"
+}
+
+func renderExamples(examples []string) string {
+	if len(examples) == 0 {
+		return ""
+	}
+	var content strings.Builder
+	for _, example := range examples {
+		content.WriteString("\n")
+		content.WriteString(exampleStyle.Render("  • " + example))
+	}
+	content.WriteString("\n")
+	return content.String()
 }

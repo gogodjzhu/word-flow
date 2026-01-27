@@ -107,6 +107,8 @@ func (c *LLMConfig) Validate() error {
 
 func (c *LLMConfig) GetDefaults() interface{} {
 	return map[string]interface{}{
+		"llm.url":         "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+		"llm.model":       "glm-4",
 		"llm.timeout":     "30s",
 		"llm.max_tokens":  2000,
 		"llm.temperature": 0.3,

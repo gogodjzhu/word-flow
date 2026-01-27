@@ -26,7 +26,11 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 		Use:   "notebook <word>",
 		Short: "Learning words in notebook",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			notebook, err := dict.OpenNotebook(cfg.Notebook)
+			notebookConfig, err := cfg.Notebook.GetConfig()
+			if err != nil {
+				return err
+			}
+			notebook, err := dict.OpenNotebook(notebookConfig)
 			if err != nil {
 				return err
 			}
@@ -158,10 +162,7 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 				}
 
 				// Limit session size based on configuration
-				maxReviews := 50 // default
-				if max, ok := cfg.Notebook.Parameters["fsrs.max_reviews_per_session"].(int); ok {
-					maxReviews = max
-				}
+				maxReviews := notebookConfig.MaxReviews
 
 				if len(dueWords) > maxReviews {
 					dueWords = dueWords[:maxReviews]

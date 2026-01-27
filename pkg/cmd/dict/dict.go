@@ -48,7 +48,11 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 			}
 
 			/* mark the word as learning in the notebook */
-			notebook, err := dict.OpenNotebook(cfg.Notebook)
+			notebookConfig, err := cfg.Notebook.GetConfig()
+			if err != nil {
+				return err
+			}
+			notebook, err := dict.OpenNotebook(notebookConfig)
 			if err != nil {
 				return err
 			}

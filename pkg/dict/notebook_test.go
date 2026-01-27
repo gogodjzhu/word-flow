@@ -158,11 +158,9 @@ func TestNotebookFilenameFix(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Create a notebook config with default name
-	notebookConfig := &config.NotebookConfig{
-		Default: "default",
-		Parameters: map[string]interface{}{
-			config.NotebookConfigNotebookBasepath: tempDir,
-		},
+	notebookConfig := &config.NotebookSettings{
+		Default:  "default",
+		BasePath: tempDir,
 	}
 
 	// Open notebook
@@ -195,11 +193,9 @@ func TestFileNotebook_MarkWithTranslation(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Create test notebook config
-	notebookConfig := &config.NotebookConfig{
-		Default: "test",
-		Parameters: map[string]interface{}{
-			"notebook.basepath": tempDir,
-		},
+	notebookConfig := &config.NotebookSettings{
+		Default:  "test",
+		BasePath: tempDir,
 	}
 
 	// Open notebook
@@ -337,11 +333,9 @@ func TestFileNotebook_BackwardCompatibility(t *testing.T) {
 	}
 
 	// Open notebook with old format
-	notebookConfig := &config.NotebookConfig{
-		Default: "old",
-		Parameters: map[string]interface{}{
-			"notebook.basepath": tempDir,
-		},
+	notebookConfig := &config.NotebookSettings{
+		Default:  "old",
+		BasePath: tempDir,
 	}
 
 	notebook, err := OpenNotebook(notebookConfig)

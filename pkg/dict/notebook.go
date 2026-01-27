@@ -32,12 +32,12 @@ type Notebooks interface {
 	SaveExamResults(results []*entity.WordNote) error
 }
 
-func OpenNotebook(conf *config.NotebookConfig) (Notebooks, error) {
-	var ok bool
-	filenotebook := &fileNotebook{}
-	if filenotebook.directory, ok = conf.Parameters[config.NotebookConfigNotebookBasepath].(string); !ok {
+func OpenNotebook(conf *config.NotebookSettings) (Notebooks, error) {
+	if conf == nil || conf.BasePath == "" {
 		return nil, errors.New("[Err] invalid notebook base path")
 	}
+	filenotebook := &fileNotebook{}
+	filenotebook.directory = conf.BasePath
 	filenotebook.notebookName = conf.Default
 	filenotebook.filename = filepath.Join(filenotebook.directory, filenotebook.notebookName+".yaml")
 	if err := filenotebook.init(); err != nil {
@@ -78,31 +78,25 @@ func (f *fileNotebook) Mark(word string, action Action, translation *entity.Word
 
 	// Convert translation to string format if provided
 	var translationStr string
-	var examples []string
 	if translation != nil {
 		translationStr = translation.RawString()
-		if len(translation.Examples) > 0 {
-			examples = append(examples, translation.Examples...)
-		}
-		for _, meaning := range translation.WordMeanings {
-			if len(meaning.Examples) > 0 {
-				examples = append(examples, meaning.Examples...)
-			}
-		}
 	}
+	examples := collectExamples(translation)
+	wordID := entity.WordId(word)
+	now := time.Now().Unix()
 
 	note := &entity.WordNote{
-		WordItemId:     entity.WordId(word),
+		WordItemId:     wordID,
 		Word:           word,
 		LookupTimes:    0,
-		CreateTime:     time.Now().Unix(),
-		LastLookupTime: time.Now().Unix(),
+		CreateTime:     now,
+		LastLookupTime: now,
 		Translation:    translationStr,
 		Examples:       examples,
 	}
 	isOld := false
 	for _, n := range notes {
-		if n.WordItemId == entity.WordId(word) {
+		if n.WordItemId == wordID {
 			note, isOld = n, true
 			// Only update translation if it's provided and not empty
 			if translationStr != "" {
@@ -120,15 +114,15 @@ func (f *fileNotebook) Mark(word string, action Action, translation *entity.Word
 	switch action {
 	case Learning:
 		note.LookupTimes++
-		note.LastLookupTime = time.Now().Unix()
+		note.LastLookupTime = now
 	case Learned:
 		note.LookupTimes--
-		note.LastLookupTime = time.Now().Unix()
+		note.LastLookupTime = now
 	case Delete:
 		// delete note
 		var newNotes []*entity.WordNote
 		for _, n := range notes {
-			if n.WordItemId != entity.WordId(word) {
+			if n.WordItemId != wordID {
 				newNotes = append(newNotes, n)
 			}
 		}
@@ -328,19 +322,12 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 	var examplesStr string
 	if translation != nil {
 		translationStr = translation.RawString()
-		var examples []string
-		if len(translation.Examples) > 0 {
-			examples = append(examples, translation.Examples...)
-		}
-		for _, meaning := range translation.WordMeanings {
-			if len(meaning.Examples) > 0 {
-				examples = append(examples, meaning.Examples...)
-			}
-		}
+		examples := collectExamples(translation)
 		if len(examples) > 0 {
 			examplesStr = strings.Join(examples, "\n")
 		}
 	}
+	wordID := entity.WordId(word)
 
 	var sql string
 	var params []interface{}
@@ -349,22 +336,22 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 	case Learning:
 		if examplesStr != "" {
 			sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation, examples) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times + 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation), examples = COALESCE(VALUES(examples), examples)"
-			params = []interface{}{entity.WordId(word), s.notebookName, word, 1, now, now, translationStr, examplesStr, now}
+			params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, examplesStr, now}
 		} else {
 			sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times + 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation)"
-			params = []interface{}{entity.WordId(word), s.notebookName, word, 1, now, now, translationStr, now}
+			params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, now}
 		}
 	case Learned:
 		if examplesStr != "" {
 			sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation, examples) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times - 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation), examples = COALESCE(VALUES(examples), examples)"
-			params = []interface{}{entity.WordId(word), s.notebookName, word, 1, now, now, translationStr, examplesStr, now}
+			params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, examplesStr, now}
 		} else {
 			sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times - 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation)"
-			params = []interface{}{entity.WordId(word), s.notebookName, word, 1, now, now, translationStr, now}
+			params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, now}
 		}
 	case Delete:
 		sql = "DELETE FROM word_note WHERE notebook = ? AND word_id = ?"
-		params = []interface{}{s.notebookName, entity.WordId(word)}
+		params = []interface{}{s.notebookName, wordID}
 	}
 	tx := s.db.Exec(sql, params...)
 	if tx.Error != nil {
@@ -377,7 +364,7 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 		return nil, nil
 	}
 	var updateWordNote SQLNotebookWordNote
-	tx = s.db.First(&updateWordNote, "notebook = ? AND word_id = ?", s.notebookName, entity.WordId(word))
+	tx = s.db.First(&updateWordNote, "notebook = ? AND word_id = ?", s.notebookName, wordID)
 	tx.Order("create_time DESC")
 	if tx.Error != nil {
 		return nil, errors.Wrap(tx.Error, "[Err] get word note failed")
@@ -442,4 +429,20 @@ func (s *sqlNotebook) SaveExamResults(results []*entity.WordNote) error {
 		}
 	}
 	return nil
+}
+
+func collectExamples(translation *entity.WordItem) []string {
+	if translation == nil {
+		return nil
+	}
+	var examples []string
+	if len(translation.Examples) > 0 {
+		examples = append(examples, translation.Examples...)
+	}
+	for _, meaning := range translation.WordMeanings {
+		if len(meaning.Examples) > 0 {
+			examples = append(examples, meaning.Examples...)
+		}
+	}
+	return examples
 }
