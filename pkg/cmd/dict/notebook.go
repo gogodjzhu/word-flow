@@ -3,6 +3,7 @@ package dict
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -292,18 +293,27 @@ func newCmdNotebookImport(f *cmdutil.Factory, cfg *config.Config) *cobra.Command
 			}
 
 			imported := 0
+			processed := 0
+			total := len(words)
 			for _, word := range words {
 				wordItem, err := dictionaryClient.Search(word)
 				if err != nil {
-					_, _ = fmt.Fprintf(f.IOStreams.Out, "[Err] search word failed: %s (%v)\n", word, err)
+					_, _ = fmt.Fprintf(f.IOStreams.Out, "\n[Err] search word failed: %s (%v)\n", word, err)
+					processed++
+					printImportProgress(f.IOStreams.Out, processed, total)
 					continue
 				}
 				if _, err := notebook.Mark(wordItem.Word, dict.Learning, wordItem); err != nil {
 					_, _ = fmt.Fprintf(f.IOStreams.Out, "[Err] save word failed: %s (%v)\n", wordItem.Word, err)
+					processed++
+					printImportProgress(f.IOStreams.Out, processed, total)
 					continue
 				}
 				imported++
+				processed++
+				printImportProgress(f.IOStreams.Out, processed, total)
 			}
+			_, _ = fmt.Fprint(f.IOStreams.Out, "\n")
 			_, _ = fmt.Fprintf(f.IOStreams.Out, "Imported %d/%d words\n", imported, len(words))
 			return nil
 		},
@@ -360,4 +370,13 @@ func readImportWordsTSV(filename string) ([]string, error) {
 		return nil, err
 	}
 	return words, nil
+}
+
+func printImportProgress(out io.Writer, done, total int) {
+	if total <= 0 {
+		_, _ = fmt.Fprintf(out, "\rImporting: %d", done)
+		return
+	}
+	percent := float64(done) / float64(total) * 100
+	_, _ = fmt.Fprintf(out, "\rImporting: %.0f%% (%d/%d)", percent, done, total)
 }
