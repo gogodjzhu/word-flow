@@ -41,19 +41,19 @@ func TestSchedulerRepeat(t *testing.T) {
 	}
 
 	// Check that each rating exists
-	ratings := []Rating{Again, Hard, Good, Easy}
+	ratings := []Rating{Skip, Hard, Good, Easy}
 	for _, rating := range ratings {
 		if _, exists := nextCards[rating]; !exists {
 			t.Errorf("Missing card for rating %v", rating)
 		}
 	}
 
-	// Check that Easy has longer interval than Again
-	againCard := nextCards[Again]
+	// Check that Easy has longer interval than Skip
+	skipCard := nextCards[Skip]
 	easyCard := nextCards[Easy]
 
-	if easyCard.Due.Before(againCard.Due) {
-		t.Error("Expected Easy rating to have longer interval than Again")
+	if easyCard.Due.Before(skipCard.Due) {
+		t.Error("Expected Easy rating to have longer interval than Skip")
 	}
 }
 
@@ -90,10 +90,10 @@ func TestCardStates(t *testing.T) {
 
 func TestRatingString(t *testing.T) {
 	tests := map[Rating]string{
-		Again: "Again",
-		Hard:  "Hard",
-		Good:  "Good",
-		Easy:  "Easy",
+		Skip: "Skip",
+		Hard: "Hard",
+		Good: "Good",
+		Easy: "Easy",
 	}
 
 	for rating, expected := range tests {

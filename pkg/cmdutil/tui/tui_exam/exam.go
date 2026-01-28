@@ -15,7 +15,7 @@ import (
 
 // keyMap defines key bindings for the exam interface
 type keyMap struct {
-	RateAgain key.Binding
+	RateSkip key.Binding
 	RateHard  key.Binding
 	RateGood  key.Binding
 	RateEasy  key.Binding
@@ -29,9 +29,9 @@ type keyMap struct {
 // DefaultKeyMap returns the default key bindings
 func DefaultKeyMap() keyMap {
 	return keyMap{
-		RateAgain: key.NewBinding(
+		RateSkip: key.NewBinding(
 			key.WithKeys("1"),
-			key.WithHelp("1", "Again (failure)"),
+			key.WithHelp("1", "Skip (failure)"),
 		),
 		RateHard: key.NewBinding(
 			key.WithKeys("2"),
@@ -90,6 +90,10 @@ var (
 			Italic(true).
 			MarginTop(1)
 
+	phoneticStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#9ED3FF")).
+			Italic(true)
+
 	ratingStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFFFF")).
 			MarginTop(2)
@@ -110,7 +114,7 @@ type ratingItem struct {
 }
 
 var ratingItems = []ratingItem{
-	{rating: fsrs.Again, name: "Again", desc: "Complete failure"},
+	{rating: fsrs.Skip, name: "Skip", desc: "Complete failure"},
 	{rating: fsrs.Hard, name: "Hard", desc: "Difficult recall"},
 	{rating: fsrs.Good, name: "Good", desc: "Moderate effort"},
 	{rating: fsrs.Easy, name: "Easy", desc: "Very easy"},
@@ -124,6 +128,7 @@ type Model struct {
 	showDef    bool
 	showEx     bool
 	showHelp   bool
+	pending    *fsrs.Rating
 	completed  int
 	skipped    int
 	startTime  time.Time
@@ -142,6 +147,7 @@ func NewModel(words []*entity.WordNote, scheduler *fsrs.Scheduler) Model {
 		showDef:    false, // Hidden by default
 		showEx:     false, // Hidden by default
 		showHelp:   false,
+		pending:    nil,
 		completed:  0,
 		skipped:    0,
 		startTime:  time.Now(),
@@ -177,20 +183,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.Skip):
 			m.skipped++
+			m.pending = nil
 			m.nextWord()
 			return m, nil
+		}
 
-		case key.Matches(msg, m.keys.RateAgain):
-			return m.rateWord(fsrs.Again)
+		if m.pending != nil {
+			switch {
+			case key.Matches(msg, m.keys.RateSkip):
+				return m.confirmRating()
+			case key.Matches(msg, m.keys.RateHard):
+				m.pending = nil
+				return m, nil
+			}
+			return m, nil
+		}
 
+		switch {
+		case key.Matches(msg, m.keys.RateSkip):
+			return m.selectRating(fsrs.Skip)
 		case key.Matches(msg, m.keys.RateHard):
-			return m.rateWord(fsrs.Hard)
-
+			return m.selectRating(fsrs.Hard)
 		case key.Matches(msg, m.keys.RateGood):
-			return m.rateWord(fsrs.Good)
-
+			return m.selectRating(fsrs.Good)
 		case key.Matches(msg, m.keys.RateEasy):
-			return m.rateWord(fsrs.Easy)
+			return m.selectRating(fsrs.Easy)
 		}
 
 	case tea.WindowSizeMsg:
@@ -199,6 +216,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m Model) selectRating(rating fsrs.Rating) (tea.Model, tea.Cmd) {
+	if m.currentIdx >= len(m.words) {
+		return m, nil
+	}
+	ratingCopy := rating
+	m.pending = &ratingCopy
+	m.showDef = true
+	m.showEx = true
+	return m, nil
+}
+
+func (m Model) confirmRating() (tea.Model, tea.Cmd) {
+	if m.pending == nil {
+		return m, nil
+	}
+	rating := *m.pending
+	return m.rateWord(rating)
 }
 
 // rateWord processes the rating and moves to the next word
@@ -220,6 +256,7 @@ func (m Model) rateWord(rating fsrs.Rating) (tea.Model, tea.Cmd) {
 	}
 
 	m.completed++
+	m.pending = nil
 	m.nextWord()
 	return m, nil
 }
@@ -227,6 +264,9 @@ func (m Model) rateWord(rating fsrs.Rating) (tea.Model, tea.Cmd) {
 // nextWord moves to the next word
 func (m *Model) nextWord() {
 	m.currentIdx++
+	m.showDef = false
+	m.showEx = false
+	m.pending = nil
 	if m.currentIdx >= len(m.words) {
 		m.quitting = true
 	}
@@ -265,6 +305,11 @@ func (m Model) View() string {
 	// Current word
 	content.WriteString(wordStyle.Render(currentWord.Word))
 	content.WriteString("\n")
+	phoneticLine := formatPhonetics(currentWord)
+	if phoneticLine != "" {
+		content.WriteString(phoneticStyle.Render(phoneticLine))
+		content.WriteString("\n")
+	}
 
 	// Separator
 	content.WriteString(renderSeparator(m.width))
@@ -290,11 +335,18 @@ func (m Model) View() string {
 	content.WriteString(renderSeparator(m.width))
 
 	// Rating options
-	content.WriteString(ratingStyle.Render("How well did you know this word?"))
-	content.WriteString("\n")
-	for i, item := range ratingItems {
-		ratingNum := i + 1
-		content.WriteString(fmt.Sprintf("[%d] %s - %s\n", ratingNum, item.name, item.desc))
+	if m.pending != nil {
+		content.WriteString(ratingStyle.Render(fmt.Sprintf("✅ Confirm your rating: %d-%s", ratingNumber(*m.pending), ratingName(*m.pending))))
+		content.WriteString("\n")
+		content.WriteString("[1] Next - Confirm and continue\n")
+		content.WriteString("[2] Reselect - Change rating\n")
+	} else {
+		content.WriteString(ratingStyle.Render("🤔 How well did you know this word?"))
+		content.WriteString("\n")
+		for i, item := range ratingItems {
+			ratingNum := i + 1
+			content.WriteString(fmt.Sprintf("[%d] %s - %s\n", ratingNum, item.name, item.desc))
+		}
 	}
 
 	// Info section
@@ -308,7 +360,11 @@ func (m Model) View() string {
 	}
 
 	// Help line
-	content.WriteString(helpStyle.Render("[1-4: Rate] [d: Definition] [e: Examples] [s: Skip] [h: Help] [q: Quit]"))
+	if m.pending != nil {
+		content.WriteString(helpStyle.Render("[1: Next] [2: Reselect] [d: Definition] [e: Examples] [s: Skip] [h: Help] [q: Quit]"))
+	} else {
+		content.WriteString(helpStyle.Render("[1-4: Rate] [d: Definition] [e: Examples] [s: Skip] [h: Help] [q: Quit]"))
+	}
 
 	// Apply container style
 	container := lipgloss.NewStyle().
@@ -354,10 +410,13 @@ func (m Model) renderHelp() string {
 	content := titleStyle.Render("Help - Vocabulary Exam") + "\n\n"
 
 	content += ratingStyle.Render("Rating Options:") + "\n"
-	content += "  [1] Again - Complete failure, reset to learning\n"
+	content += "  [1] Skip  - Complete failure, reset to learning\n"
 	content += "  [2] Hard  - Difficult recall with hesitation\n"
 	content += "  [3] Good  - Moderate effort, standard interval\n"
 	content += "  [4] Easy  - Very easy recall, longer interval\n\n"
+	content += ratingStyle.Render("After rating:") + "\n"
+	content += "  [1] Next - Confirm rating and continue\n"
+	content += "  [2] Reselect - Choose a different rating\n\n"
 
 	content += ratingStyle.Render("Controls:") + "\n"
 	content += "  [d] Toggle definition visibility\n"
@@ -431,6 +490,24 @@ func ensureFSRSCard(word *entity.WordNote) *entity.FSRSCard {
 	return fsrsCard
 }
 
+func ratingName(rating fsrs.Rating) string {
+	for _, item := range ratingItems {
+		if item.rating == rating {
+			return item.name
+		}
+	}
+	return "Unknown"
+}
+
+func ratingNumber(rating fsrs.Rating) int {
+	for i, item := range ratingItems {
+		if item.rating == rating {
+			return i + 1
+		}
+	}
+	return 0
+}
+
 func renderSeparator(width int) string {
 	separatorWidth := min(max(width-4, 10), 50)
 	return lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).
@@ -448,4 +525,25 @@ func renderExamples(examples []string) string {
 	}
 	content.WriteString("\n")
 	return content.String()
+}
+
+func formatPhonetics(note *entity.WordNote) string {
+	if note == nil || len(note.WordPhonetics) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(note.WordPhonetics))
+	for _, phonetic := range note.WordPhonetics {
+		if phonetic == nil || strings.TrimSpace(phonetic.Text) == "" {
+			continue
+		}
+		label := strings.TrimSpace(phonetic.LanguageCode)
+		if label == "" {
+			label = "phonetic"
+		}
+		parts = append(parts, fmt.Sprintf("%s [%s]", label, phonetic.Text))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "🔊 " + strings.Join(parts, "  ")
 }

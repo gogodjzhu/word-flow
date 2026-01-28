@@ -70,17 +70,17 @@ func (s State) String() string {
 type Rating int8
 
 const (
-	Again Rating = iota + 1 // 1 - Complete failure
-	Hard                    // 2 - Difficult recall
-	Good                    // 3 - Moderate effort
-	Easy                    // 4 - Very easy
+	Skip Rating = iota + 1 // 1 - Complete failure
+	Hard                   // 2 - Difficult recall
+	Good                   // 3 - Moderate effort
+	Easy                   // 4 - Very easy
 )
 
 // String returns the string representation of the rating
 func (r Rating) String() string {
 	switch r {
-	case Again:
-		return "Again"
+	case Skip:
+		return "Skip"
 	case Hard:
 		return "Hard"
 	case Good:

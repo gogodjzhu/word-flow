@@ -82,6 +82,7 @@ func (f *fileNotebook) Mark(word string, action Action, translation *entity.Word
 		translationStr = translation.RawString()
 	}
 	examples := collectExamples(translation)
+	phonetics := collectPhonetics(translation)
 	wordID := entity.WordId(word)
 	now := time.Now().Unix()
 
@@ -93,6 +94,7 @@ func (f *fileNotebook) Mark(word string, action Action, translation *entity.Word
 		LastLookupTime: now,
 		Translation:    translationStr,
 		Examples:       examples,
+		WordPhonetics:  phonetics,
 	}
 	isOld := false
 	for _, n := range notes {
@@ -104,6 +106,9 @@ func (f *fileNotebook) Mark(word string, action Action, translation *entity.Word
 			}
 			if len(examples) > 0 {
 				note.Examples = examples
+			}
+			if len(phonetics) > 0 {
+				note.WordPhonetics = phonetics
 			}
 			break
 		}
@@ -320,12 +325,14 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 	// Convert translation to string format if provided
 	var translationStr string
 	var examplesStr string
+	var phonetics []*entity.WordPhonetic
 	if translation != nil {
 		translationStr = translation.RawString()
 		examples := collectExamples(translation)
 		if len(examples) > 0 {
 			examplesStr = strings.Join(examples, "\n")
 		}
+		phonetics = collectPhonetics(translation)
 	}
 	wordID := entity.WordId(word)
 
@@ -369,7 +376,11 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 	if tx.Error != nil {
 		return nil, errors.Wrap(tx.Error, "[Err] get word note failed")
 	}
-	return updateWordNote.toWordNote(), nil
+	wordNote := updateWordNote.toWordNote()
+	if len(phonetics) > 0 {
+		wordNote.WordPhonetics = phonetics
+	}
+	return wordNote, nil
 }
 
 func (s *sqlNotebook) ListNotes() ([]*entity.WordNote, error) {
@@ -445,4 +456,27 @@ func collectExamples(translation *entity.WordItem) []string {
 		}
 	}
 	return examples
+}
+
+func collectPhonetics(translation *entity.WordItem) []*entity.WordPhonetic {
+	if translation == nil {
+		return nil
+	}
+	if len(translation.WordPhonetics) == 0 {
+		return nil
+	}
+	phonetics := make([]*entity.WordPhonetic, 0, len(translation.WordPhonetics))
+	for _, phonetic := range translation.WordPhonetics {
+		if phonetic == nil {
+			continue
+		}
+		if strings.TrimSpace(phonetic.Text) == "" {
+			continue
+		}
+		phonetics = append(phonetics, phonetic)
+	}
+	if len(phonetics) == 0 {
+		return nil
+	}
+	return phonetics
 }

@@ -33,13 +33,14 @@ type WordMeaning struct {
 }
 
 type WordNote struct {
-	WordItemId     string   `json:"word_id" yaml:"word_id"`
-	Word           string   `json:"word" yaml:"word"`
-	LookupTimes    int      `json:"lookup_times" yaml:"lookup_times"`
-	CreateTime     int64    `json:"create_time" yaml:"create_time"`
-	LastLookupTime int64    `json:"last_lookup_time" yaml:"last_lookup_time"`
-	Translation    string   `json:"translation,omitempty" yaml:"translation,omitempty"`
-	Examples       []string `json:"examples,omitempty" yaml:"examples,omitempty"`
+	WordItemId     string          `json:"word_id" yaml:"word_id"`
+	Word           string          `json:"word" yaml:"word"`
+	LookupTimes    int             `json:"lookup_times" yaml:"lookup_times"`
+	CreateTime     int64           `json:"create_time" yaml:"create_time"`
+	LastLookupTime int64           `json:"last_lookup_time" yaml:"last_lookup_time"`
+	Translation    string          `json:"translation,omitempty" yaml:"translation,omitempty"`
+	Examples       []string        `json:"examples,omitempty" yaml:"examples,omitempty"`
+	WordPhonetics  []*WordPhonetic `json:"word_phonetics,omitempty" yaml:"word_phonetics,omitempty"`
 	// FSRS fields
 	FSRSCard   *FSRSCard `json:"fsrs_card,omitempty" yaml:"fsrs_card,omitempty"`
 	LastRating int       `json:"last_rating,omitempty" yaml:"last_rating"`
