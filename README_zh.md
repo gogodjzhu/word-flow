@@ -94,14 +94,31 @@ echo "Software engineering is the application of engineering to the development 
 
 使用 `dict` 命令查询的单词会自动保存到您的单词本中。
 
+#### `notebook review`
+
+用于在清爽的 TUI 列表中复习已保存单词、查看缓存释义，并清理不再需要的词条。
+
 复习单词（TUI 列表）：
 ```bash
-wordflow notebook
+wordflow notebook review
 ```
+
+#### `notebook exam`
+
+用于组织一次结构化复习，只练习到期的单词。
 
 开始一次间隔重复测验（仅抽取到期单词）：
 ```bash
-wordflow notebook -o exam
+wordflow notebook exam
+```
+
+#### `notebook import`
+
+用于将 TSV 词表导入单词本，并在导入过程中完成查词。
+
+从 TSV 文件导入单词到单词本：
+```bash
+wordflow notebook import -i words.tsv
 ```
 
 ## 配置说明

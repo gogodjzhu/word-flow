@@ -94,14 +94,31 @@ echo "Software engineering is the application of engineering to the development 
 
 Words looked up via the `dict` command are automatically saved to your notebook.
 
+#### `notebook review`
+
+Use this to review saved words in a clean TUI list, check cached translations, and remove items you no longer need.
+
 Review words in your notebook (TUI list):
 ```bash
-wordflow notebook
+wordflow notebook review
 ```
+
+#### `notebook exam`
+
+Use this for a structured review session that focuses only on words due for practice.
 
 Start a spaced-repetition exam session for due words:
 ```bash
-wordflow notebook -o exam
+wordflow notebook exam
+```
+
+#### `notebook import`
+
+Use this to import a TSV word list into the notebook with lookup during import.
+
+Import words into your notebook from a TSV file:
+```bash
+wordflow notebook import -i words.tsv
 ```
 
 ## Configuration
