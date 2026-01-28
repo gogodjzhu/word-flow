@@ -1,0 +1,85 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build (${{ matrix.goos }}-${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: arm64
+            archive_ext: tar.gz
+          - goos: darwin
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: darwin
+            goarch: arm64
+            archive_ext: tar.gz
+          - goos: windows
+            goarch: amd64
+            archive_ext: zip
+            exe_ext: .exe
+          - goos: windows
+            goarch: arm64
+            archive_ext: zip
+            exe_ext: .exe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          go build -o dist/wordflow${{ matrix.exe_ext }} cmd/wordflow/main.go
+
+      - name: Package
+        run: |
+          mkdir -p dist/packages
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            zip -j "dist/packages/wordflow-${{ matrix.goos }}-${{ matrix.goarch }}.zip" "dist/wordflow${{ matrix.exe_ext }}" README.md README_zh.md LICENSE
+          else
+            tar -czf "dist/packages/wordflow-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" -C dist "wordflow${{ matrix.exe_ext }}" -C "$GITHUB_WORKSPACE" README.md README_zh.md LICENSE
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wordflow-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/packages/*
+
+  release:
+    name: release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+          generate_release_notes: true
