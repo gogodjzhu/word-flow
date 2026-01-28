@@ -314,7 +314,6 @@ func (c *Client) TranslateAndExplain(text string) (*entity.WordItem, error) {
 			return nil, errors.Wrap(err, "failed to read response body")
 		}
 		defer response.Body.Close()
-		println(string(bodyBytes))
 
 		var chatResponse ChatResponse
 		err = json.Unmarshal(bodyBytes, &chatResponse)

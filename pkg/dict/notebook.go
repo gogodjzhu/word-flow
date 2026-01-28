@@ -299,6 +299,7 @@ type SQLNotebookWordNote struct {
 	LastLookupTime int64  `gorm:"last_lookup_time"`
 	Translation    string `gorm:"translation"`
 	Examples       string `gorm:"examples"`
+	Phonetics      string `gorm:"phonetics"`
 }
 
 func (s *SQLNotebookWordNote) TableName() string {
@@ -310,6 +311,12 @@ func (s *SQLNotebookWordNote) toWordNote() *entity.WordNote {
 	if strings.TrimSpace(s.Examples) != "" {
 		examples = strings.Split(s.Examples, "\n")
 	}
+	var phonetics []*entity.WordPhonetic
+	if strings.TrimSpace(s.Phonetics) != "" {
+		if err := yaml.Unmarshal([]byte(s.Phonetics), &phonetics); err != nil {
+			phonetics = nil
+		}
+	}
 	return &entity.WordNote{
 		WordItemId:     s.WordId,
 		Word:           s.Word,
@@ -318,6 +325,7 @@ func (s *SQLNotebookWordNote) toWordNote() *entity.WordNote {
 		LastLookupTime: s.LastLookupTime,
 		Translation:    s.Translation,
 		Examples:       examples,
+		WordPhonetics:  phonetics,
 	}
 }
 
@@ -325,6 +333,7 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 	// Convert translation to string format if provided
 	var translationStr string
 	var examplesStr string
+	var phoneticsStr string
 	var phonetics []*entity.WordPhonetic
 	if translation != nil {
 		translationStr = translation.RawString()
@@ -333,6 +342,12 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 			examplesStr = strings.Join(examples, "\n")
 		}
 		phonetics = collectPhonetics(translation)
+		if len(phonetics) > 0 {
+			phoneticsBytes, err := yaml.Marshal(phonetics)
+			if err == nil {
+				phoneticsStr = string(phoneticsBytes)
+			}
+		}
 	}
 	wordID := entity.WordId(word)
 
@@ -341,21 +356,11 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 	now := time.Now().Unix()
 	switch action {
 	case Learning:
-		if examplesStr != "" {
-			sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation, examples) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times + 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation), examples = COALESCE(VALUES(examples), examples)"
-			params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, examplesStr, now}
-		} else {
-			sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times + 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation)"
-			params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, now}
-		}
+		sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation, examples, phonetics) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times + 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation), examples = COALESCE(VALUES(examples), examples), phonetics = COALESCE(VALUES(phonetics), phonetics)"
+		params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, examplesStr, phoneticsStr, now}
 	case Learned:
-		if examplesStr != "" {
-			sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation, examples) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times - 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation), examples = COALESCE(VALUES(examples), examples)"
-			params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, examplesStr, now}
-		} else {
-			sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times - 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation)"
-			params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, now}
-		}
+		sql = "INSERT INTO word_note (word_id, notebook, word, lookup_times, create_time, last_lookup_time, translation, examples, phonetics) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE lookup_times = lookup_times - 1, last_lookup_time = ?, translation = COALESCE(VALUES(translation), translation), examples = COALESCE(VALUES(examples), examples), phonetics = COALESCE(VALUES(phonetics), phonetics)"
+		params = []interface{}{wordID, s.notebookName, word, 1, now, now, translationStr, examplesStr, phoneticsStr, now}
 	case Delete:
 		sql = "DELETE FROM word_note WHERE notebook = ? AND word_id = ?"
 		params = []interface{}{s.notebookName, wordID}
