@@ -6,7 +6,7 @@ import (
 	"github.com/open-spaced-repetition/go-fsrs"
 )
 
-// Scheduler wraps the FSRS algorithm for vocabulary review
+// Scheduler wraps the FSRS algorithm for vocabulary exam
 type Scheduler struct {
 	params fsrs.Parameters
 }

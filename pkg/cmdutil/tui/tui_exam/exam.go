@@ -256,7 +256,7 @@ func (m Model) View() string {
 	var content strings.Builder
 
 	// Title with progress
-	title := fmt.Sprintf("Vocabulary Review: %d/%d (%.1f%%)",
+	title := fmt.Sprintf("Vocabulary Exam: %d/%d (%.1f%%)",
 		m.currentIdx+1, len(m.words),
 		float64(m.currentIdx+1)/float64(len(m.words))*100)
 	content.WriteString(titleStyle.Render(title))
@@ -313,7 +313,6 @@ func (m Model) View() string {
 	// Apply container style
 	container := lipgloss.NewStyle().
 		Width(m.width-4).
-		Height(m.height-2).
 		Padding(1, 2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#7D56F4"))
@@ -343,7 +342,6 @@ func (m Model) renderSummary() string {
 
 	container := lipgloss.NewStyle().
 		Width(m.width-4).
-		Height(m.height-2).
 		Padding(1, 2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#7D56F4"))
@@ -353,7 +351,7 @@ func (m Model) renderSummary() string {
 
 // renderHelp renders the help screen
 func (m Model) renderHelp() string {
-	content := titleStyle.Render("Help - Vocabulary Review") + "\n\n"
+	content := titleStyle.Render("Help - Vocabulary Exam") + "\n\n"
 
 	content += ratingStyle.Render("Rating Options:") + "\n"
 	content += "  [1] Again - Complete failure, reset to learning\n"
@@ -372,7 +370,6 @@ func (m Model) renderHelp() string {
 
 	container := lipgloss.NewStyle().
 		Width(m.width-4).
-		Height(m.height-2).
 		Padding(1, 2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#7D56F4"))
