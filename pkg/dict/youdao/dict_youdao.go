@@ -41,8 +41,16 @@ func (d *DictYoudao) Search(word string) (*entity.WordItem, error) {
 			return nil, buzz_error.InvalidInput("Invalid word: " + word)
 		}
 		trans := strings.TrimSpace(doc.Find("#phrsListTab > div.trans-container > ul").Text())
-		enPhonetic := strings.TrimSpace(doc.Find("#phrsListTab > h2 > div > span:nth-child(1)").Text())
-		usPhonetic := strings.TrimSpace(doc.Find("#phrsListTab > h2 > div > span:nth-child(2)").Text())
+
+		var enPhonetic, usPhonetic string
+		doc.Find("#phrsListTab h2 span").Each(func(i int, s *goquery.Selection) {
+			text := strings.TrimSpace(s.Text())
+			if strings.Contains(text, "英") {
+				enPhonetic = text
+			} else if strings.Contains(text, "美") {
+				usPhonetic = text
+			}
+		})
 		var usages []string
 		doc.Find("#bilingual > ul > li").Each(func(i int, selection *goquery.Selection) {
 			var exampleEn, exampleCh string
