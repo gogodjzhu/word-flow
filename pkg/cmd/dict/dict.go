@@ -23,7 +23,6 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 		Short: "Look up the word in the dictionary",
 		Long:  "Look up the word in the dictionary, you can specify the dictionary, including youdao, ecdict, etymonline etc.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// If list flag is provided, print available dictionary types and exit.
 			if list {
 				dicts := dict.AvailableDictionaries()
 				for _, d := range dicts {
@@ -31,7 +30,7 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 				}
 				return nil
 			}
-			/* lookup the word in the dictionary */
+
 			dictionary, err := dict.NewDict(cfg.Dict)
 			if err != nil {
 				return err
@@ -40,14 +39,12 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 			if err != nil {
 				return err
 			}
-			// Use the new rendering system
 			segments := wordItem.Format()
 			renderErr := f.IOStreams.Renderer.RenderToWriter(segments, f.IOStreams.Out)
 			if renderErr != nil {
 				return renderErr
 			}
 
-			/* mark the word as learning in the notebook */
 			notebookConfig, err := cfg.Notebook.GetConfig()
 			if err != nil {
 				return err
