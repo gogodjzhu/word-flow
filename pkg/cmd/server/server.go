@@ -223,12 +223,14 @@ var htmlTemplate = `
 </head>
 <body>
     <div class="container">
+        {{if not .Clean}}
         <div class="search-box">
             <form method="GET" action="/dict">
                 <input type="text" name="word" value="{{.QueryWord}}" placeholder="Enter a word..." autofocus>
                 <button type="submit">Search</button>
             </form>
         </div>
+        {{end}}
         {{if .Error}}
         <div class="result">
             <div class="error">{{.Error}}</div>
@@ -284,6 +286,7 @@ type TemplateData struct {
 	Meanings  []dictMeaning
 	Examples  []string
 	Error     string
+	Clean     bool
 }
 
 type dictPhonetic struct {
@@ -326,16 +329,28 @@ func startServer(f *cmdutil.Factory, port int) error {
 	tmpl := template.Must(template.New("dict").Parse(htmlTemplate))
 
 	http.HandleFunc("/dict", func(w http.ResponseWriter, r *http.Request) {
+		clean := r.URL.Query().Get("clean") == "true"
+		dictName := r.URL.Query().Get("dict")
+
+		currentDict := dictionary
+		if dictName != "" {
+			newCfg := *cfg.Dict
+			newCfg.Default = dictName
+			if d, err := dict.NewDict(&newCfg); err == nil {
+				currentDict = d
+			}
+		}
+
 		word := r.URL.Query().Get("word")
 		if word == "" {
-			tmpl.Execute(w, TemplateData{QueryWord: word})
+			tmpl.Execute(w, TemplateData{QueryWord: word, Clean: clean})
 			return
 		}
 
 		word = strings.TrimSpace(word)
-		wordItem, err := dictionary.Search(word)
+		wordItem, err := currentDict.Search(word)
 		if err != nil {
-			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error()})
+			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
 			return
 		}
 
@@ -349,18 +364,18 @@ func startServer(f *cmdutil.Factory, port int) error {
 
 		notebookConfig, err := cfg.Notebook.GetConfig()
 		if err != nil {
-			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error()})
+			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
 			return
 		}
 		notebook, err := dict.OpenNotebook(notebookConfig)
 		if err != nil {
-			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error()})
+			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
 			return
 		}
 		cfg.Notebook.Default = originalNotebook
 
 		if _, err := notebook.Mark(wordItem.Word, dict.Learning, wordItem); err != nil {
-			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error()})
+			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
 			return
 		}
 
@@ -389,6 +404,7 @@ func startServer(f *cmdutil.Factory, port int) error {
 			Phonetics: phonetics,
 			Meanings:  meanings,
 			Examples:  wordItem.Examples,
+			Clean:     clean,
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -404,8 +420,11 @@ func startServer(f *cmdutil.Factory, port int) error {
 	})
 
 	fmt.Printf("Starting word-flow server on http://localhost:%d\n", port)
+	fmt.Printf("  Dictionary: %s\n", cfg.Dict.Default)
 	fmt.Printf("Endpoints:\n")
-	fmt.Printf("  GET /              - Web interface\n")
-	fmt.Printf("  GET /dict?word=<word>&notebook=<notebook> - Lookup word (supports notebook param)\n")
+	fmt.Printf("  GET /                              - Web interface\n")
+	fmt.Printf("  GET /dict?word=<word>              - Lookup word\n")
+	fmt.Printf("  GET /dict?word=<word>&clean=true   - Clean mode (hide search box)\n")
+	fmt.Printf("  GET /dict?word=<word>&dict=<dict>   - Use specific dictionary\n")
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
