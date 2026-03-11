@@ -24,6 +24,7 @@ const (
 
 type Notebooks interface {
 	Mark(word string, action Action, translation *entity.WordItem) (*entity.WordNote, error)
+	Exists(word string) (bool, error)
 	ListNotes() ([]*entity.WordNote, error)
 	ListNotebooks() ([]string, error)
 	// FSRS methods
@@ -136,6 +137,20 @@ func (f *fileNotebook) Mark(word string, action Action, translation *entity.Word
 		return nil, errors.New("[Err] invalid action:" + string(action))
 	}
 	return note, f.writeNote(notes)
+}
+
+func (f *fileNotebook) Exists(word string) (bool, error) {
+	notes, err := f.readNote()
+	if err != nil {
+		return false, err
+	}
+	wordID := entity.WordId(word)
+	for _, n := range notes {
+		if n.WordItemId == wordID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (f *fileNotebook) ListNotes() ([]*entity.WordNote, error) {
@@ -386,6 +401,16 @@ func (s *sqlNotebook) Mark(word string, action Action, translation *entity.WordI
 		wordNote.WordPhonetics = phonetics
 	}
 	return wordNote, nil
+}
+
+func (s *sqlNotebook) Exists(word string) (bool, error) {
+	wordID := entity.WordId(word)
+	var count int64
+	tx := s.db.Model(&SQLNotebookWordNote{}).Where("notebook = ? AND word_id = ?", s.notebookName, wordID).Count(&count)
+	if tx.Error != nil {
+		return false, errors.Wrap(tx.Error, "[Err] check word exists failed")
+	}
+	return count > 0, nil
 }
 
 func (s *sqlNotebook) ListNotes() ([]*entity.WordNote, error) {

@@ -80,6 +80,27 @@ var htmlTemplate = `
             font-weight: 700;
             color: #333;
             margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .word-text {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .favorite-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            color: #fbbf24;
+            padding: 0;
+            line-height: 1;
+            transition: transform 0.2s;
+        }
+        .favorite-btn:hover {
+            transform: scale(1.2);
         }
         .source {
             font-size: 13px;
@@ -237,7 +258,12 @@ var htmlTemplate = `
         </div>
         {{else if .Word}}
         <div class="result">
-            <div class="word">{{.Word}}</div>
+            <div class="word">
+                <span class="word-text">{{.Word}}</span>
+                <button class="favorite-btn" onclick="toggleFavorite('{{.QueryWord}}')">
+                    {{if .IsFavorited}}★{{else}}☆{{end}}
+                </button>
+            </div>
             <div class="source">{{.Source}}</div>
             
             {{if .Phonetics}}
@@ -274,19 +300,36 @@ var htmlTemplate = `
         </div>
         {{end}}
     </div>
+    <script>
+        async function toggleFavorite(word) {
+            try {
+                const response = await fetch('/favorite?word=' + encodeURIComponent(word), {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const btn = document.querySelector('.favorite-btn');
+                    btn.textContent = data.isFavorited ? '★' : '☆';
+                }
+            } catch (e) {
+                console.error('Failed to toggle favorite:', e);
+            }
+        }
+    </script>
 </body>
 </html>
 `
 
 type TemplateData struct {
-	QueryWord string
-	Word      string
-	Source    string
-	Phonetics []dictPhonetic
-	Meanings  []dictMeaning
-	Examples  []string
-	Error     string
-	Clean     bool
+	QueryWord   string
+	Word        string
+	Source      string
+	Phonetics   []dictPhonetic
+	Meanings    []dictMeaning
+	Examples    []string
+	Error       string
+	Clean       bool
+	IsFavorited bool
 }
 
 type dictPhonetic struct {
@@ -331,6 +374,7 @@ func startServer(f *cmdutil.Factory, port int) error {
 	http.HandleFunc("/dict", func(w http.ResponseWriter, r *http.Request) {
 		clean := r.URL.Query().Get("clean") == "true"
 		dictName := r.URL.Query().Get("dict")
+		favoriteParam := r.URL.Query().Get("favorite")
 
 		currentDict := dictionary
 		if dictName != "" {
@@ -374,7 +418,28 @@ func startServer(f *cmdutil.Factory, port int) error {
 		}
 		cfg.Notebook.Default = originalNotebook
 
-		if _, err := notebook.Mark(wordItem.Word, dict.Learning, wordItem); err != nil {
+		if favoriteParam != "" {
+			shouldFavorite := favoriteParam == "true" || favoriteParam == "1"
+			isCurrentlyFavorited, err := notebook.Exists(wordItem.Word)
+			if err != nil {
+				tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
+				return
+			}
+			if shouldFavorite && !isCurrentlyFavorited {
+				if _, err := notebook.Mark(wordItem.Word, dict.Learning, wordItem); err != nil {
+					tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
+					return
+				}
+			} else if !shouldFavorite && isCurrentlyFavorited {
+				if _, err := notebook.Mark(wordItem.Word, dict.Delete, nil); err != nil {
+					tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
+					return
+				}
+			}
+		}
+
+		isFavorited, err := notebook.Exists(wordItem.Word)
+		if err != nil {
 			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
 			return
 		}
@@ -398,17 +463,79 @@ func startServer(f *cmdutil.Factory, port int) error {
 		}
 
 		data := TemplateData{
-			QueryWord: word,
-			Word:      wordItem.Word,
-			Source:    wordItem.Source,
-			Phonetics: phonetics,
-			Meanings:  meanings,
-			Examples:  wordItem.Examples,
-			Clean:     clean,
+			QueryWord:   word,
+			Word:        wordItem.Word,
+			Source:      wordItem.Source,
+			Phonetics:   phonetics,
+			Meanings:    meanings,
+			Examples:    wordItem.Examples,
+			Clean:       clean,
+			IsFavorited: isFavorited,
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		tmpl.Execute(w, data)
+	})
+
+	http.HandleFunc("/favorite", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		word := r.URL.Query().Get("word")
+		if word == "" {
+			http.Error(w, "Word is required", http.StatusBadRequest)
+			return
+		}
+
+		word = strings.TrimSpace(word)
+
+		notebookName := r.URL.Query().Get("notebook")
+		if notebookName == "" {
+			notebookName = cfg.Notebook.Default
+		}
+
+		originalNotebook := cfg.Notebook.Default
+		cfg.Notebook.Default = notebookName
+
+		notebookConfig, err := cfg.Notebook.GetConfig()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		notebook, err := dict.OpenNotebook(notebookConfig)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		cfg.Notebook.Default = originalNotebook
+
+		isFavorited, err := notebook.Exists(word)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if isFavorited {
+			if _, err := notebook.Mark(word, dict.Delete, nil); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			wordItem, err := dictionary.Search(word)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if _, err := notebook.Mark(word, dict.Learning, wordItem); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"isFavorited": %v}`, !isFavorited)
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
