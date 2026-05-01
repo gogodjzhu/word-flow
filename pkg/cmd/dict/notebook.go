@@ -58,11 +58,8 @@ func newCmdNotebookReview(f *cmdutil.Factory, cfg *config.Config) *cobra.Command
 		Use:   "review",
 		Short: "Review words in notebook",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			notebookConfig, err := cfg.Notebook.GetConfig()
-			if err != nil {
-				return err
-			}
-			notebook, err := dict.OpenNotebook(notebookConfig)
+			notebookConfig := cfg.Notebook.Settings
+			notebook, err := dict.OpenNotebook(notebookConfig, cfg.Notebook.Default)
 			if err != nil {
 				return err
 			}
@@ -190,11 +187,8 @@ func newCmdNotebookExam(f *cmdutil.Factory, cfg *config.Config) *cobra.Command {
 		Use:   "exam",
 		Short: "Review due words with FSRS",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			notebookConfig, err := cfg.Notebook.GetConfig()
-			if err != nil {
-				return err
-			}
-			notebook, err := dict.OpenNotebook(notebookConfig)
+			notebookConfig := cfg.Notebook.Settings
+			notebook, err := dict.OpenNotebook(notebookConfig, cfg.Notebook.Default)
 			if err != nil {
 				return err
 			}
@@ -264,11 +258,8 @@ func newCmdNotebookImport(f *cmdutil.Factory, cfg *config.Config) *cobra.Command
 		Use:   "import",
 		Short: "Import words into notebook",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			notebookConfig, err := cfg.Notebook.GetConfig()
-			if err != nil {
-				return err
-			}
-			notebook, err := dict.OpenNotebook(notebookConfig)
+			notebookConfig := cfg.Notebook.Settings
+			notebook, err := dict.OpenNotebook(notebookConfig, cfg.Notebook.Default)
 			if err != nil {
 				return err
 			}

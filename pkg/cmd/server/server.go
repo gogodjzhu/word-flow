@@ -406,12 +406,8 @@ func startServer(f *cmdutil.Factory, port int) error {
 		originalNotebook := cfg.Notebook.Default
 		cfg.Notebook.Default = notebookName
 
-		notebookConfig, err := cfg.Notebook.GetConfig()
-		if err != nil {
-			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
-			return
-		}
-		notebook, err := dict.OpenNotebook(notebookConfig)
+		notebookConfig := cfg.Notebook.Settings
+		notebook, err := dict.OpenNotebook(notebookConfig, cfg.Notebook.Default)
 		if err != nil {
 			tmpl.Execute(w, TemplateData{QueryWord: word, Error: err.Error(), Clean: clean})
 			return
@@ -499,12 +495,8 @@ func startServer(f *cmdutil.Factory, port int) error {
 		originalNotebook := cfg.Notebook.Default
 		cfg.Notebook.Default = notebookName
 
-		notebookConfig, err := cfg.Notebook.GetConfig()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		notebook, err := dict.OpenNotebook(notebookConfig)
+		notebookConfig := cfg.Notebook.Settings
+		notebook, err := dict.OpenNotebook(notebookConfig, cfg.Notebook.Default)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

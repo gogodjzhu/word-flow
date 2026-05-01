@@ -31,6 +31,10 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 				return nil
 			}
 
+			if err := cfg.Validate(cfg.Dict.Default); err != nil {
+				return err
+			}
+
 			dictionary, err := dict.NewDict(cfg.Dict)
 			if err != nil {
 				return err
@@ -45,11 +49,8 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 				return renderErr
 			}
 
-			notebookConfig, err := cfg.Notebook.GetConfig()
-			if err != nil {
-				return err
-			}
-			notebook, err := dict.OpenNotebook(notebookConfig)
+			notebookConfig := cfg.Notebook.Settings
+			notebook, err := dict.OpenNotebook(notebookConfig, cfg.Notebook.Default)
 			if err != nil {
 				return err
 			}

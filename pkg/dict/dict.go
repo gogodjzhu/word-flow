@@ -31,7 +31,6 @@ type DictInfo struct {
 	Description string
 }
 
-// AvailableDictionaries returns all supported dictionaries with their descriptions.
 func AvailableDictionaries() []DictInfo {
 	return []DictInfo{
 		{
@@ -57,7 +56,6 @@ func AvailableDictionaries() []DictInfo {
 	}
 }
 
-// AvailableEndpoints returns all supported dictionary endpoint identifiers.
 func AvailableEndpoints() []string {
 	dicts := AvailableDictionaries()
 	endpoints := make([]string, len(dicts))
@@ -69,7 +67,7 @@ func AvailableEndpoints() []string {
 
 func NewDict(conf *config.DictConfig) (Dict, error) {
 	endpoint := conf.Default
-	endpointConfig, err := conf.GetConfigForEndpoint(endpoint)
+	endpointConfig, err := conf.GetEndpointConfig(endpoint)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get config for endpoint %s", endpoint)
 	}
