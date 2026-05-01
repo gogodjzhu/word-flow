@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "0.4.4"
+var version = "dev"
 
 func NewCmdRoot(f *cmdutil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
