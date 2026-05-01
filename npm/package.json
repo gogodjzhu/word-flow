@@ -1,6 +1,6 @@
 {
   "name": "@gogodjzhu/wordflow",
-  "version": "0.4.4",
+  "version": "0.0.0",
   "description": "A terminal-based dictionary and vocabulary learning tool",
   "bin": {
     "wordflow": "./run.js"

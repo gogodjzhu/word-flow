@@ -180,7 +180,7 @@ async function main() {
   console.log('Verifying checksum...');
   let checksums;
   try {
-    const checksumsBuffer = await download(checksumsUrl, 'text/');
+    const checksumsBuffer = await download(checksumsUrl);
     checksums = checksumsBuffer.toString('utf8');
   } catch (err) {
     console.error(`Warning: Could not download checksums file: ${err.message}`);
