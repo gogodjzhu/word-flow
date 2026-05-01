@@ -2,6 +2,7 @@ package dict_llm
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gogodjzhu/word-flow/internal/config"
 	"github.com/gogodjzhu/word-flow/internal/llm"
@@ -27,7 +28,7 @@ func NewDictLLM(config *config.LLMConfig) (*DictLLM, error) {
 		config.ApiKey,
 		config.URL,
 		config.Model,
-		config.Timeout,
+		time.Duration(config.Timeout),
 		config.MaxTokens,
 		config.Temperature,
 	)

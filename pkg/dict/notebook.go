@@ -33,13 +33,13 @@ type Notebooks interface {
 	SaveExamResults(results []*entity.WordNote) error
 }
 
-func OpenNotebook(conf *config.NotebookSettings) (Notebooks, error) {
+func OpenNotebook(conf *config.NotebookSettings, notebookName string) (Notebooks, error) {
 	if conf == nil || conf.BasePath == "" {
 		return nil, errors.New("[Err] invalid notebook base path")
 	}
 	filenotebook := &fileNotebook{}
 	filenotebook.directory = conf.BasePath
-	filenotebook.notebookName = conf.Default
+	filenotebook.notebookName = notebookName
 	filenotebook.filename = filepath.Join(filenotebook.directory, filenotebook.notebookName+".yaml")
 	if err := filenotebook.init(); err != nil {
 		return nil, err

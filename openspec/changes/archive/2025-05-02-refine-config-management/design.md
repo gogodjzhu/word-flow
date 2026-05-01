@@ -66,7 +66,7 @@ dict:
   llm:
     # LLM provider settings (required if dict.default is llm or using trans command)
     # api_key: ""           # Required. Set via WORDFLOW_DICT_LLM_API_KEY or wordflow config set dict.llm.api_key
-    # url: ""               # Required. LLM API endpoint, e.g. https://open.bigmodel.cn/api/paas/v4/chat/completions
+    # url: ""               # Required. Full API endpoint URL, not base URL. e.g. https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
     # model: ""             # Required. LLM model name, e.g. glm-4
     timeout: 30s
     max_tokens: 2000

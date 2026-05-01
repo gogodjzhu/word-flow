@@ -159,12 +159,11 @@ func TestNotebookFilenameFix(t *testing.T) {
 
 	// Create a notebook config with default name
 	notebookConfig := &config.NotebookSettings{
-		Default:  "default",
 		BasePath: tempDir,
 	}
 
 	// Open notebook
-	notebook, err := OpenNotebook(notebookConfig)
+	notebook, err := OpenNotebook(notebookConfig, "default")
 	if err != nil {
 		t.Fatalf("Failed to open notebook: %v", err)
 	}
@@ -194,12 +193,11 @@ func TestFileNotebook_MarkWithTranslation(t *testing.T) {
 
 	// Create test notebook config
 	notebookConfig := &config.NotebookSettings{
-		Default:  "test",
 		BasePath: tempDir,
 	}
 
 	// Open notebook
-	notebook, err := OpenNotebook(notebookConfig)
+	notebook, err := OpenNotebook(notebookConfig, "default")
 	if err != nil {
 		t.Fatalf("Failed to open notebook: %v", err)
 	}
@@ -314,7 +312,7 @@ func TestFileNotebook_BackwardCompatibility(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Create notebook file with old format (without translation field)
-	notebookFile := filepath.Join(tempDir, "old.yaml")
+	notebookFile := filepath.Join(tempDir, "default.yaml")
 	err := os.MkdirAll(tempDir, 0755)
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
@@ -334,11 +332,10 @@ func TestFileNotebook_BackwardCompatibility(t *testing.T) {
 
 	// Open notebook with old format
 	notebookConfig := &config.NotebookSettings{
-		Default:  "old",
 		BasePath: tempDir,
 	}
 
-	notebook, err := OpenNotebook(notebookConfig)
+	notebook, err := OpenNotebook(notebookConfig, "default")
 	if err != nil {
 		t.Fatalf("Failed to open notebook: %v", err)
 	}

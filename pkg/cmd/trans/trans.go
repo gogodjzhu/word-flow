@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gogodjzhu/word-flow/internal/buzz_error"
 	"github.com/gogodjzhu/word-flow/internal/config"
@@ -32,18 +33,25 @@ Use --no-stream to get formatted output with --ref.`,
 				return errors.Wrap(err, "failed to get config")
 			}
 
-			llmConfig, err := cfg.Dict.GetConfigForEndpoint("llm")
-			if err != nil {
-				return errors.Wrap(err, "failed to get LLM config")
+			llmCfg := cfg.Dict.LLM
+
+			if err := config.ValidateForTrans(cfg); err != nil {
+				return err
 			}
 
-			// Get input text
+			client := llm.NewClient(
+				llmCfg.ApiKey,
+				llmCfg.URL,
+				llmCfg.Model,
+				time.Duration(llmCfg.Timeout),
+				llmCfg.MaxTokens,
+				llmCfg.Temperature,
+			)
+
 			var text string
 			if len(args) > 0 {
-				// Command line arguments
 				text = strings.Join(args, " ")
 			} else {
-				// Read from stdin (pipe)
 				text, err = readFromStdin(f.IOStreams.In)
 				if err != nil {
 					return errors.Wrap(err, "failed to read from stdin")
@@ -53,33 +61,18 @@ Use --no-stream to get formatted output with --ref.`,
 				}
 			}
 
-			// Trim whitespace for validation
 			trimmedText := strings.TrimSpace(text)
 			if trimmedText == "" {
 				return buzz_error.InvalidInput("No input text provided")
 			}
 
-			// Create LLM client
-			llmCfg := llmConfig.(*config.LLMConfig)
-			client := llm.NewClient(
-				llmCfg.ApiKey,
-				llmCfg.URL,
-				llmCfg.Model,
-				llmCfg.Timeout,
-				llmCfg.MaxTokens,
-				llmCfg.Temperature,
-			)
-
-			// Translate text
 			if noStream {
-				// Non-streaming mode - capture translation first
 				var buf bytes.Buffer
 				translation, err := client.TranslateWithStream(text, true, &buf, ref)
 				if err != nil {
 					return errors.Wrap(err, "failed to translate text")
 				}
 
-				// Output with formatting
 				if ref {
 					err = renderWithRef(f.IOStreams.Renderer, translation, f.IOStreams.Out)
 				} else {
@@ -89,7 +82,6 @@ Use --no-stream to get formatted output with --ref.`,
 					return errors.Wrap(err, "failed to render translation")
 				}
 			} else if ref {
-				// True streaming mode with ref - capture and process in real-time
 				pr, pw := io.Pipe()
 				go func() {
 					defer pw.Close()
@@ -99,14 +91,12 @@ Use --no-stream to get formatted output with --ref.`,
 					}
 				}()
 
-				// Process the stream as it comes
 				streamReader := NewSimpleStreamReader(pr, f.IOStreams.Renderer, f.IOStreams.Out)
 				err := streamReader.Process()
 				if err != nil {
 					return errors.Wrap(err, "failed to process stream")
 				}
 			} else {
-				// Regular streaming mode
 				_, err := client.TranslateWithStream(text, false, f.IOStreams.Out, ref)
 				if err != nil {
 					return errors.Wrap(err, "failed to translate text")
@@ -146,7 +136,6 @@ func readFromStdin(r io.Reader) (string, error) {
 		return "", errors.Wrap(err, "failed to read from stdin")
 	}
 
-	// Remove trailing newline if present
 	text := strings.TrimSuffix(result.String(), "\n")
 
 	return text, nil
