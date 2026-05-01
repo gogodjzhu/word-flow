@@ -58,6 +58,12 @@ go build -o wordflow cmd/wordflow/main.go
 mv wordflow /usr/local/bin/
 ```
 
+### 通过 npm 安装
+
+```bash
+npm install -g @gogodjzhu/wordflow@latest
+```
+
 ## 使用说明
 
 ### 查词 (`dict`)
@@ -123,7 +129,42 @@ wordflow notebook import -i words.tsv
 
 ## 配置说明
 
-Word-Flow 使用 YAML 格式的配置文件，默认位于 `~/.config/wordflow/config.yaml`。首次运行程序时会自动生成该文件。
+Word-Flow 使用 YAML 格式的配置文件，默认位于 `~/.config/wordflow/config.yaml`（或 `$WORDFLOW_HOME/config.yaml`）。首次运行程序时会自动生成包含注释的默认配置。
+
+### 配置命令
+
+通过命令行管理配置：
+
+```bash
+# 查看当前配置（包含环境变量覆盖）
+wordflow config view
+
+# 获取单个配置值
+wordflow config get dict.llm.api_key
+
+# 设置配置值
+wordflow config set dict.llm.api_key sk-xxx
+wordflow config set dict.default llm
+
+# 查看配置文件路径
+wordflow config path
+
+# 重新生成默认配置文件（使用 --force 覆盖已有文件）
+wordflow config init
+wordflow config init --force
+
+# 使用自定义配置文件
+wordflow --config /path/to/config.yaml dict hello
+```
+
+### 环境变量
+
+所有配置值都可以通过 `WORDFLOW_` 前缀的环境变量覆盖：
+
+```bash
+WORDFLOW_DICT_LLM_API_KEY=sk-xxx wordflow trans "hello"
+WORDFLOW_DICT_DEFAULT=llm wordflow dict "ephemeral"
+```
 
 ### 支持的字典源
 
@@ -133,36 +174,41 @@ Word-Flow 使用 YAML 格式的配置文件，默认位于 `~/.config/wordflow/c
 | `etymonline` | 在线 | 免费，词源查询。 |
 | `ecdict` | 离线 | 免费，需下载 `stardict.db` 数据库文件。 |
 | `mwebster` | API | 需要 Merriam-Webster API Key。 |
-| `llm` | API | AI 智能释义 (兼容 OpenAI 接口)。 |
+| `llm` | API | AI 智能释义（兼容 OpenAI 接口）。 |
 
 ### 配置示例
 
-如需使用 LLM 功能或 API 类字典，请编辑配置文件：
-
 ```yaml
+version: v1
+
 dict:
   default: youdao
-  parameters:
-    # LLM 设置
-    llm.api_key: "your-api-key"
-    llm.url: "https://api.openai.com/v1"
-    llm.model: "gpt-3.5-turbo"
-    
-    # 韦氏词典设置
-    mwebster.key: "your-dictionary-api-key"
-    
-    # ECDICT (离线词库)
-    ecdict.dbfilename: "/path/to/stardict.db"
+
+  youdao: {}
+
+  llm:
+    api_key: ""           # 必填。可通过 WORDFLOW_DICT_LLM_API_KEY 或 wordflow config set 设置
+    url: ""               # 必填。完整的 API 端点 URL（非 base URL）
+    model: ""             # 必填。LLM 模型名称
+    timeout: 30s
+    max_tokens: 2000
+    temperature: 0.3
+
+  ecdict:
+    # db_filename: ""    # 留空时默认为 <WORDFLOW_HOME>/stardict.db
+
+  etymonline: {}
+
+  mwebster:
+    # key: ""            # 使用 mwebster 时必填
 
 notebook:
   default: default
-  parameters:
-    # 单词本存储路径
-    notebook.basepath: "~/.config/wordflow/notebooks"
 
-    # FSRS（间隔重复）
-    fsrs.max_reviews_per_session: 50
-    fsrs.new_cards_per_day: 20
+  settings:
+    # basepath: ""       # 留空时默认为 <WORDFLOW_HOME>/notebooks
+    max_reviews_per_session: 50
+    new_cards_per_day: 20
 ```
 
 ## 许可证

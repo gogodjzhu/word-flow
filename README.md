@@ -58,6 +58,12 @@ go build -o wordflow cmd/wordflow/main.go
 mv wordflow /usr/local/bin/
 ```
 
+### Install via npm
+
+```bash
+npm install -g @gogodjzhu/wordflow@latest
+```
+
 ## Usage
 
 ### Dictionary Lookup (`dict`)
@@ -123,7 +129,42 @@ wordflow notebook import -i words.tsv
 
 ## Configuration
 
-Word-Flow uses a YAML configuration file located at `~/.config/wordflow/config.yaml`. The file is automatically created on the first run.
+Word-Flow uses a YAML configuration file located at `~/.config/wordflow/config.yaml` (or `$WORDFLOW_HOME/config.yaml`). The file is automatically created on the first run with commented defaults.
+
+### Config Command
+
+Manage your configuration from the command line:
+
+```bash
+# View current configuration (with env var overrides applied)
+wordflow config view
+
+# Get a single value
+wordflow config get dict.llm.api_key
+
+# Set a value
+wordflow config set dict.llm.api_key sk-xxx
+wordflow config set dict.default llm
+
+# Show config file path
+wordflow config path
+
+# Re-generate config file with defaults (use --force to overwrite)
+wordflow config init
+wordflow config init --force
+
+# Use a custom config file
+wordflow --config /path/to/config.yaml dict hello
+```
+
+### Environment Variables
+
+All config values can be overridden via environment variables with the `WORDFLOW_` prefix:
+
+```bash
+WORDFLOW_DICT_LLM_API_KEY=sk-xxx wordflow trans "hello"
+WORDFLOW_DICT_DEFAULT=llm wordflow dict "ephemeral"
+```
 
 ### Supported Dictionaries
 
@@ -137,32 +178,37 @@ Word-Flow uses a YAML configuration file located at `~/.config/wordflow/config.y
 
 ### Example Configuration
 
-To use LLM features or API-based dictionaries, edit your config file:
-
 ```yaml
+version: v1
+
 dict:
   default: youdao
-  parameters:
-    # LLM Settings
-    llm.api_key: "your-api-key"
-    llm.url: "https://api.openai.com/v1"
-    llm.model: "gpt-3.5-turbo"
-    
-    # Merriam-Webster
-    mwebster.key: "your-dictionary-api-key"
-    
-    # ECDICT (Offline)
-    ecdict.dbfilename: "/path/to/stardict.db"
+
+  youdao: {}
+
+  llm:
+    api_key: ""           # Required. Set via WORDFLOW_DICT_LLM_API_KEY or wordflow config set
+    url: ""               # Required. Full API endpoint URL, not base URL
+    model: ""             # Required. LLM model name
+    timeout: 30s
+    max_tokens: 2000
+    temperature: 0.3
+
+  ecdict:
+    # db_filename: ""    # Defaults to <WORDFLOW_HOME>/stardict.db if empty
+
+  etymonline: {}
+
+  mwebster:
+    # key: ""            # Required if using mwebster
 
 notebook:
   default: default
-  parameters:
-    # Notebook storage
-    notebook.basepath: "~/.config/wordflow/notebooks"
 
-    # FSRS (spaced repetition)
-    fsrs.max_reviews_per_session: 50
-    fsrs.new_cards_per_day: 20
+  settings:
+    # basepath: ""       # Defaults to <WORDFLOW_HOME>/notebooks if empty
+    max_reviews_per_session: 50
+    new_cards_per_day: 20
 ```
 
 ## License
