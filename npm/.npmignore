@@ -1,0 +1,5 @@
+*.exe
+*.tar.gz
+*.zip
+SHA256SUMS
+node_modules/

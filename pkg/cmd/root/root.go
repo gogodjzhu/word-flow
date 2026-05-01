@@ -9,15 +9,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "0.4.4"
+
 func NewCmdRoot(f *cmdutil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
-		Use:   "github.com/gogodjzhu/word-flow <command> <subcommand> [flags]",
-		Short: "github.com/gogodjzhu/word-flow",
-		Long:  `github.com/gogodjzhu/word-flow is a tool collection for bash environments.`,
+		Use:   "wordflow <command> <subcommand> [flags]",
+		Short: "wordflow",
+		Long:  `wordflow is a terminal-based dictionary and vocabulary learning tool.`,
 
 		Annotations: map[string]string{
-			"version": "0.0.1",
-			"website": "www.github.com/gogodjzhu/word-flow.xyz",
+			"version": version,
+			"website": "https://github.com/gogodjzhu/word-flow",
 		},
 	}
 
