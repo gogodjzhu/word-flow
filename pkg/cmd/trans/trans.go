@@ -20,6 +20,12 @@ func NewCmdTrans(f *cmdutil.Factory) (*cobra.Command, error) {
 	var ref bool
 	var endpoint string
 
+	cfg, err := f.Config()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get config")
+	}
+	originalEndpoint := cfg.Trans.Default
+
 	cmd := &cobra.Command{
 		Use:   "trans [text]",
 		Short: "Translate English text to Chinese",
@@ -110,11 +116,10 @@ Use --endpoint to override the default translator (google, llm).`,
 			return nil
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := f.Config()
-			if err != nil {
-				return errors.Wrap(err, "failed to get config")
+			if endpoint != "" && endpoint != originalEndpoint {
+				return config.PatchYAMLFile(cfg.Common.ConfigFilename, "trans.default", endpoint)
 			}
-			return cfg.Save()
+			return nil
 		},
 	}
 

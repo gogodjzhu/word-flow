@@ -42,7 +42,7 @@ func NewCmdNotebook(f *cmdutil.Factory) (*cobra.Command, error) {
 				return nil
 			}
 			cfg.Notebook.Default = notebook
-			return cfg.Save()
+			return config.PatchYAMLFile(cfg.Common.ConfigFilename, "notebook.default", notebook)
 		},
 	}
 

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -79,12 +78,46 @@ func newCmdConfigSet(f *cmdutil.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := setConfigValue(cfg, args[0], args[1]); err != nil {
+			if err := validateConfigKey(args[0]); err != nil {
 				return err
 			}
-			return cfg.Save()
+			return config.PatchYAMLFile(cfg.Common.ConfigFilename, args[0], args[1])
 		},
 	}
+}
+
+func validateConfigKey(key string) error {
+	parts := strings.Split(key, ".")
+	t := reflect.TypeOf(config.Config{})
+	for i, part := range parts {
+		field, found := findFieldTypeByYAMLTag(t, part)
+		if !found {
+			return fmt.Errorf("config key %q not found. Valid keys can be found with 'wordflow config view'", key)
+		}
+		if i == len(parts)-1 {
+			return nil
+		}
+		if field.Type.Kind() == reflect.Ptr {
+			field.Type = field.Type.Elem()
+		}
+		t = field.Type
+	}
+	return nil
+}
+
+func findFieldTypeByYAMLTag(t reflect.Type, tag string) (reflect.StructField, bool) {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		yamlTag := field.Tag.Get("yaml")
+		if yamlTag == "" || yamlTag == "-" {
+			continue
+		}
+		name := strings.SplitN(yamlTag, ",", 2)[0]
+		if name == tag {
+			return field, true
+		}
+	}
+	return reflect.StructField{}, false
 }
 
 func newCmdConfigPath(f *cmdutil.Factory) *cobra.Command {
@@ -169,33 +202,6 @@ func getConfigValue(cfg *config.Config, key string) (string, error) {
 	}
 }
 
-func setConfigValue(cfg *config.Config, key, value string) error {
-	val := reflect.ValueOf(cfg).Elem()
-	parts := strings.Split(key, ".")
-	current := val
-
-	for i, part := range parts {
-		if current.Kind() == reflect.Ptr {
-			if current.IsNil() {
-				current.Set(reflect.New(current.Type().Elem()))
-			}
-			current = current.Elem()
-		}
-		if current.Kind() != reflect.Struct {
-			return fmt.Errorf("config key %q not found", key)
-		}
-		field, found := findFieldByYAMLTag(current, part)
-		if !found {
-			return fmt.Errorf("config key %q not found. Valid keys can be found with 'wordflow config view'", key)
-		}
-		if i == len(parts)-1 {
-			return setFieldValue(field, value)
-		}
-		current = field
-	}
-	return fmt.Errorf("config key %q not found", key)
-}
-
 func findFieldByYAMLTag(v reflect.Value, tag string) (reflect.Value, bool) {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
@@ -211,44 +217,4 @@ func findFieldByYAMLTag(v reflect.Value, tag string) (reflect.Value, bool) {
 		}
 	}
 	return reflect.Value{}, false
-}
-
-func setFieldValue(field reflect.Value, value string) error {
-	if !field.CanSet() {
-		return fmt.Errorf("field is not settable")
-	}
-
-	switch field.Kind() {
-	case reflect.String:
-		field.SetString(value)
-	case reflect.Int:
-		intVal, err := strconv.Atoi(value)
-		if err != nil {
-			return fmt.Errorf("cannot set int field to %q: %w", value, err)
-		}
-		field.SetInt(int64(intVal))
-	case reflect.Float64:
-		floatVal, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return fmt.Errorf("cannot set float field to %q: %w", value, err)
-		}
-		field.SetFloat(floatVal)
-	case reflect.Bool:
-		boolVal, err := strconv.ParseBool(value)
-		if err != nil {
-			return fmt.Errorf("cannot set bool field to %q: %w", value, err)
-		}
-		field.SetBool(boolVal)
-	default:
-		if field.Type() == reflect.TypeOf(config.Duration(0)) {
-			dur, err := time.ParseDuration(value)
-			if err != nil {
-				return fmt.Errorf("cannot parse duration %q: %w", value, err)
-			}
-			field.Set(reflect.ValueOf(config.Duration(dur)))
-			return nil
-		}
-		return fmt.Errorf("unsupported field type: %s", field.Kind())
-	}
-	return nil
 }

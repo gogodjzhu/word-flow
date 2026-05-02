@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gogodjzhu/word-flow/internal/config"
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
 	"github.com/gogodjzhu/word-flow/pkg/dict"
 	"github.com/spf13/cobra"
@@ -17,6 +18,8 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 
 	var notebookDefault string
 	var dictionaryDefault string
+	originalNotebook := cfg.Notebook.Default
+	originalDict := cfg.Dict.Default
 	var list bool
 	cmd := &cobra.Command{
 		Use:   "dict <word>",
@@ -62,7 +65,17 @@ func NewCmdDict(f *cmdutil.Factory) (*cobra.Command, error) {
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			cfg.Notebook.Default = notebookDefault
 			cfg.Dict.Default = dictionaryDefault
-			return cfg.Save()
+			if dictionaryDefault != originalDict {
+				if err := config.PatchYAMLFile(cfg.Common.ConfigFilename, "dict.default", dictionaryDefault); err != nil {
+					return err
+				}
+			}
+			if notebookDefault != originalNotebook {
+				if err := config.PatchYAMLFile(cfg.Common.ConfigFilename, "notebook.default", notebookDefault); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&notebookDefault, "notebook", "n", cfg.Notebook.Default, "Specify the notebook")
