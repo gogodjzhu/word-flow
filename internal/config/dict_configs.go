@@ -69,3 +69,9 @@ func (c *LLMConfig) Validate() error {
 	}
 	return nil
 }
+
+type GoogleConfig struct{}
+
+func (c *GoogleConfig) Validate() error {
+	return nil
+}

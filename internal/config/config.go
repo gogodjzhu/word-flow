@@ -46,7 +46,25 @@ type Config struct {
 	Version  string          `yaml:"version"`
 	Common   *CommonConfig   `yaml:"-"`
 	Dict     *DictConfig     `yaml:"dict"`
+	Trans    *TransConfig    `yaml:"trans"`
 	Notebook *NotebookConfig `yaml:"notebook"`
+}
+
+type TransConfig struct {
+	Default string           `yaml:"default"`
+	LLM     *TransLLMConfig  `yaml:"llm"`
+	Google  *TransGoogleConfig `yaml:"google"`
+}
+
+func (tc *TransConfig) GetEndpointConfig(endpoint string) (TransEndpointConfig, error) {
+	switch endpoint {
+	case "llm":
+		return tc.LLM, nil
+	case "google":
+		return tc.Google, nil
+	default:
+		return nil, fmt.Errorf("unknown endpoint: %s", endpoint)
+	}
 }
 
 type CommonConfig struct {
@@ -60,7 +78,8 @@ type DictConfig struct {
 	Youdao    *YoudaoConfig     `yaml:"youdao"`
 	Ecdict    *EcdictConfig     `yaml:"ecdict"`
 	Etymoline *EtymonlineConfig `yaml:"etymonline"`
-	MWebster  *MWebsterConfig  `yaml:"mwebster"`
+	MWebster  *MWebsterConfig   `yaml:"mwebster"`
+	Google    *GoogleConfig     `yaml:"google"`
 }
 
 func (dc *DictConfig) GetEndpointConfig(endpoint string) (DictEndpointConfig, error) {
@@ -75,6 +94,8 @@ func (dc *DictConfig) GetEndpointConfig(endpoint string) (DictEndpointConfig, er
 		return dc.Etymoline, nil
 	case "mwebster":
 		return dc.MWebster, nil
+	case "google":
+		return dc.Google, nil
 	default:
 		return nil, fmt.Errorf("unknown endpoint: %s", endpoint)
 	}
@@ -134,7 +155,7 @@ const configTemplate = `# Wordflow configuration
 version: v1
 
 dict:
-  # Default dictionary endpoint. Options: youdao, llm, ecdict, etymonline, mwebster
+  # Default dictionary endpoint. Options: youdao, llm, ecdict, etymonline, mwebster, google
   default: youdao
 
   youdao: {}
@@ -157,6 +178,23 @@ dict:
   mwebster:
     # Merriam-Webster API key (required if using mwebster)
     # key: ""
+
+  google: {}
+
+trans:
+  # Default translator endpoint. Options: google, llm
+  default: google
+
+  google: {}
+
+  # llm:
+  #   # LLM provider settings for translation (required if trans.default is llm)
+  #   # api_key: ""           # Required. Set via WORDFLOW_TRANS_LLM_API_KEY or wordflow config set trans.llm.api_key
+  #   # url: ""               # Required. Full API endpoint URL
+  #   # model: ""             # Required. LLM model name
+  #   timeout: 30s
+  #   max_tokens: 2000
+  #   temperature: 0.3
 
 notebook:
   default: default
@@ -251,6 +289,30 @@ func applyDefaults(cfg *Config, configFilename string) {
 	}
 	if cfg.Dict.MWebster == nil {
 		cfg.Dict.MWebster = &MWebsterConfig{}
+	}
+	if cfg.Dict.Google == nil {
+		cfg.Dict.Google = &GoogleConfig{}
+	}
+	if cfg.Trans == nil {
+		cfg.Trans = &TransConfig{}
+	}
+	if cfg.Trans.Default == "" {
+		cfg.Trans.Default = "google"
+	}
+	if cfg.Trans.LLM == nil {
+		cfg.Trans.LLM = &TransLLMConfig{}
+	}
+	if cfg.Trans.LLM.Timeout == 0 {
+		cfg.Trans.LLM.Timeout = Duration(30 * time.Second)
+	}
+	if cfg.Trans.LLM.MaxTokens == 0 {
+		cfg.Trans.LLM.MaxTokens = 2000
+	}
+	if cfg.Trans.LLM.Temperature == 0 {
+		cfg.Trans.LLM.Temperature = 0.3
+	}
+	if cfg.Trans.Google == nil {
+		cfg.Trans.Google = &TransGoogleConfig{}
 	}
 	if cfg.Notebook == nil {
 		cfg.Notebook = &NotebookConfig{}
@@ -475,7 +537,14 @@ func ValidateForTrans(cfg *Config) error {
 	if cfg.Version != DefaultConfigVersion {
 		return fmt.Errorf("unsupported config version: %q. Run 'wordflow config init' to regenerate your config", cfg.Version)
 	}
-	return cfg.Dict.LLM.Validate()
+	if cfg.Trans == nil {
+		return errors.New("trans config is missing")
+	}
+	endpointConfig, err := cfg.Trans.GetEndpointConfig(cfg.Trans.Default)
+	if err != nil {
+		return err
+	}
+	return endpointConfig.Validate()
 }
 
 func (c *Config) ToString() (string, error) {

@@ -6,6 +6,7 @@ import (
 	dict_ecdict "github.com/gogodjzhu/word-flow/pkg/dict/ecdict"
 	"github.com/gogodjzhu/word-flow/pkg/dict/entity"
 	dict_etymonline "github.com/gogodjzhu/word-flow/pkg/dict/etymonline"
+	dict_google "github.com/gogodjzhu/word-flow/pkg/dict/google"
 	dict_llm "github.com/gogodjzhu/word-flow/pkg/dict/llm"
 	dict_mwebster "github.com/gogodjzhu/word-flow/pkg/dict/mwebster"
 	dict_youdao "github.com/gogodjzhu/word-flow/pkg/dict/youdao"
@@ -24,6 +25,7 @@ const (
 	Ecdict     Endpoint = "ecdict"
 	MWebster   Endpoint = "mwebster"
 	LLM        Endpoint = "llm"
+	Google     Endpoint = "google"
 )
 
 type DictInfo struct {
@@ -52,6 +54,10 @@ func AvailableDictionaries() []DictInfo {
 		{
 			Name:        string(LLM),
 			Description: "AI-powered definitions and explanations using Large Language Models, requires LLM API key and endpoint. See your LLM provider for details.",
+		},
+		{
+			Name:        string(Google),
+			Description: "[Free] Online dictionary and translation powered by Google Translate.",
 		},
 	}
 }
@@ -83,6 +89,8 @@ func NewDict(conf *config.DictConfig) (Dict, error) {
 		return dict_mwebster.NewDictMWebster(endpointConfig.(*config.MWebsterConfig))
 	case LLM:
 		return dict_llm.NewDictLLM(endpointConfig.(*config.LLMConfig))
+	case Google:
+		return dict_google.NewDictGoogle(endpointConfig.(*config.GoogleConfig))
 	default:
 		return nil, buzz_error.InvalidEndpoint(endpoint)
 	}

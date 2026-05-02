@@ -5,48 +5,47 @@ import (
 	"bytes"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/gogodjzhu/word-flow/internal/buzz_error"
 	"github.com/gogodjzhu/word-flow/internal/config"
-	"github.com/gogodjzhu/word-flow/internal/llm"
 	"github.com/gogodjzhu/word-flow/pkg/cmdutil"
+	"github.com/gogodjzhu/word-flow/pkg/translator"
+	"github.com/gogodjzhu/word-flow/pkg/translator/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
 func NewCmdTrans(f *cmdutil.Factory) (*cobra.Command, error) {
-	var useStdin bool
 	var noStream bool
 	var ref bool
+	var endpoint string
 
 	cmd := &cobra.Command{
 		Use:   "trans [text]",
-		Short: "Translate English text to Chinese using LLM",
-		Long: `Translate English text to Chinese using LLM.
+		Short: "Translate English text to Chinese",
+		Long: `Translate English text to Chinese.
 Supports both command line arguments and stdin (pipe) input.
 When --ref is enabled, shows original and translation in segment pairs.
-Use --no-stream to get formatted output with --ref.`,
+Use --no-stream to get formatted output with --ref.
+Use --endpoint to override the default translator (google, llm).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := f.Config()
 			if err != nil {
 				return errors.Wrap(err, "failed to get config")
 			}
 
-			llmCfg := cfg.Dict.LLM
+			if endpoint != "" {
+				cfg.Trans.Default = endpoint
+			}
 
 			if err := config.ValidateForTrans(cfg); err != nil {
 				return err
 			}
 
-			client := llm.NewClient(
-				llmCfg.ApiKey,
-				llmCfg.URL,
-				llmCfg.Model,
-				time.Duration(llmCfg.Timeout),
-				llmCfg.MaxTokens,
-				llmCfg.Temperature,
-			)
+			t, err := translator.NewTranslator(cfg.Trans)
+			if err != nil {
+				return errors.Wrap(err, "failed to create translator")
+			}
 
 			var text string
 			if len(args) > 0 {
@@ -66,12 +65,18 @@ Use --no-stream to get formatted output with --ref.`,
 				return buzz_error.InvalidInput("No input text provided")
 			}
 
+			opts := &types.TransOptions{
+				Ref:      ref,
+				NoStream: noStream,
+			}
+
 			if noStream {
 				var buf bytes.Buffer
-				translation, err := client.TranslateWithStream(text, true, &buf, ref)
+				err := t.Translate(text, &buf, opts)
 				if err != nil {
 					return errors.Wrap(err, "failed to translate text")
 				}
+				translation := buf.String()
 
 				if ref {
 					err = renderWithRef(f.IOStreams.Renderer, translation, f.IOStreams.Out)
@@ -85,7 +90,7 @@ Use --no-stream to get formatted output with --ref.`,
 				pr, pw := io.Pipe()
 				go func() {
 					defer pw.Close()
-					_, err := client.TranslateWithStream(text, false, pw, ref)
+					err := t.Translate(text, pw, opts)
 					if err != nil {
 						_ = pw.CloseWithError(err)
 					}
@@ -97,7 +102,7 @@ Use --no-stream to get formatted output with --ref.`,
 					return errors.Wrap(err, "failed to process stream")
 				}
 			} else {
-				_, err := client.TranslateWithStream(text, false, f.IOStreams.Out, ref)
+				err := t.Translate(text, f.IOStreams.Out, opts)
 				if err != nil {
 					return errors.Wrap(err, "failed to translate text")
 				}
@@ -113,9 +118,9 @@ Use --no-stream to get formatted output with --ref.`,
 		},
 	}
 
-	cmd.Flags().BoolVar(&useStdin, "stdin", false, "Read from stdin (pipe)")
 	cmd.Flags().BoolVar(&noStream, "no-stream", false, "Disable streaming output")
 	cmd.Flags().BoolVar(&ref, "ref", false, "Show original text with translation in segment pairs")
+	cmd.Flags().StringVarP(&endpoint, "endpoint", "e", "", "Override default translator (google, llm)")
 
 	return cmd, nil
 }
