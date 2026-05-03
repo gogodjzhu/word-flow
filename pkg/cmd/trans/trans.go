@@ -33,7 +33,7 @@ func NewCmdTrans(f *cmdutil.Factory) (*cobra.Command, error) {
 Supports both command line arguments and stdin (pipe) input.
 When --ref is enabled, shows original and translation in segment pairs.
 Use --no-stream to get formatted output with --ref.
-Use --endpoint to override the default translator (google, llm).`,
+Use --endpoint to override the default translator (baidu, google, llm).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := f.Config()
 			if err != nil {

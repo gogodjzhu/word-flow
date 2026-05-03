@@ -51,9 +51,25 @@ type Config struct {
 }
 
 type TransConfig struct {
-	Default string           `yaml:"default"`
-	LLM     *TransLLMConfig  `yaml:"llm"`
-	Google  *TransGoogleConfig `yaml:"google"`
+	Default string              `yaml:"default"`
+	LLM     *TransLLMConfig     `yaml:"llm"`
+	Google  *TransGoogleConfig  `yaml:"google"`
+	Baidu   *TransBaiduConfig   `yaml:"baidu"`
+}
+
+type TransBaiduConfig struct {
+	AppID  string `yaml:"app_id"`
+	Secret string `yaml:"secret"`
+}
+
+func (tbc *TransBaiduConfig) Validate() error {
+	if tbc.AppID == "" {
+		return errors.New("trans.baidu.app_id is required")
+	}
+	if tbc.Secret == "" {
+		return errors.New("trans.baidu.secret is required")
+	}
+	return nil
 }
 
 func (tc *TransConfig) GetEndpointConfig(endpoint string) (TransEndpointConfig, error) {
@@ -62,6 +78,8 @@ func (tc *TransConfig) GetEndpointConfig(endpoint string) (TransEndpointConfig, 
 		return tc.LLM, nil
 	case "google":
 		return tc.Google, nil
+	case "baidu":
+		return tc.Baidu, nil
 	default:
 		return nil, fmt.Errorf("unknown endpoint: %s", endpoint)
 	}
@@ -182,10 +200,15 @@ dict:
   google: {}
 
 trans:
-  # Default translator endpoint. Options: google, llm
-  default: google
+  # Default translator endpoint. Options: baidu, google, llm
+  default: baidu
 
   google: {}
+
+  baidu:
+    # Baidu Translate API credentials (required if trans.default is baidu)
+    # app_id: ""           # Required. Set via WORDFLOW_TRANS_BAIDU_APP_ID or wordflow config set trans.baidu.app_id
+    # secret: ""            # Required. Set via WORDFLOW_TRANS_BAIDU_SECRET or wordflow config set trans.baidu.secret
 
   # llm:
   #   # LLM provider settings for translation (required if trans.default is llm)
@@ -297,7 +320,7 @@ func applyDefaults(cfg *Config, configFilename string) {
 		cfg.Trans = &TransConfig{}
 	}
 	if cfg.Trans.Default == "" {
-		cfg.Trans.Default = "google"
+		cfg.Trans.Default = "baidu"
 	}
 	if cfg.Trans.LLM == nil {
 		cfg.Trans.LLM = &TransLLMConfig{}
@@ -313,6 +336,9 @@ func applyDefaults(cfg *Config, configFilename string) {
 	}
 	if cfg.Trans.Google == nil {
 		cfg.Trans.Google = &TransGoogleConfig{}
+	}
+	if cfg.Trans.Baidu == nil {
+		cfg.Trans.Baidu = &TransBaiduConfig{}
 	}
 	if cfg.Notebook == nil {
 		cfg.Notebook = &NotebookConfig{}

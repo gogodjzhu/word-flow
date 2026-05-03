@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogodjzhu/word-flow/internal/buzz_error"
 	"github.com/gogodjzhu/word-flow/internal/config"
+	trans_baidu "github.com/gogodjzhu/word-flow/pkg/translator/baidu"
 	trans_google "github.com/gogodjzhu/word-flow/pkg/translator/google"
 	trans_llm "github.com/gogodjzhu/word-flow/pkg/translator/llm"
 	"github.com/gogodjzhu/word-flow/pkg/translator/types"
@@ -22,6 +23,7 @@ type Endpoint string
 const (
 	TransLLM    Endpoint = "llm"
 	TransGoogle Endpoint = "google"
+	TransBaidu  Endpoint = "baidu"
 )
 
 type TranslatorInfo struct {
@@ -38,6 +40,10 @@ func AvailableTranslators() []TranslatorInfo {
 		{
 			Name:        string(TransGoogle),
 			Description: "[Free] Google Translate API for translation.",
+		},
+		{
+			Name:        string(TransBaidu),
+			Description: "[API] Baidu Translate API, requires app_id and secret.",
 		},
 	}
 }
@@ -57,6 +63,8 @@ func NewTranslator(cfg *config.TransConfig) (Translator, error) {
 		return trans_llm.NewTranslatorLLM(cfg.LLM), nil
 	case TransGoogle:
 		return trans_google.NewTranslatorGoogle(cfg.Google), nil
+	case TransBaidu:
+		return trans_baidu.NewTranslatorBaidu(cfg.Baidu), nil
 	default:
 		return nil, buzz_error.InvalidEndpoint(cfg.Default)
 	}

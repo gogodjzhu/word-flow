@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gogodjzhu/word-flow/internal/config"
+	trans_baidu "github.com/gogodjzhu/word-flow/pkg/translator/baidu"
 	trans_google "github.com/gogodjzhu/word-flow/pkg/translator/google"
 	trans_llm "github.com/gogodjzhu/word-flow/pkg/translator/llm"
 )
@@ -71,6 +72,53 @@ func TestNewTranslator_UnknownEndpoint(t *testing.T) {
 	}
 }
 
+func TestNewTranslator_Baidu(t *testing.T) {
+	cfg := &config.TransConfig{
+		Default: "baidu",
+		Baidu:   &config.TransBaiduConfig{AppID: "test_app_id", Secret: "test_secret"},
+	}
+	trans, err := NewTranslator(cfg)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if _, ok := trans.(*trans_baidu.TranslatorBaidu); !ok {
+		t.Errorf("expected *TranslatorBaidu, got %T", trans)
+	}
+}
+
+func TestNewTranslator_BaiduValidationError(t *testing.T) {
+	cfg := &config.TransConfig{
+		Default: "baidu",
+		Baidu:   &config.TransBaiduConfig{AppID: "", Secret: ""},
+	}
+	_, err := NewTranslator(cfg)
+	if err == nil {
+		t.Error("expected validation error for missing app_id and secret, got nil")
+	}
+}
+
+func TestNewTranslator_BaiduValidationErrorAppIDOnly(t *testing.T) {
+	cfg := &config.TransConfig{
+		Default: "baidu",
+		Baidu:   &config.TransBaiduConfig{AppID: "test_app_id", Secret: ""},
+	}
+	_, err := NewTranslator(cfg)
+	if err == nil {
+		t.Error("expected validation error for missing secret, got nil")
+	}
+}
+
+func TestNewTranslator_BaiduValidationErrorSecretOnly(t *testing.T) {
+	cfg := &config.TransConfig{
+		Default: "baidu",
+		Baidu:   &config.TransBaiduConfig{AppID: "", Secret: "test_secret"},
+	}
+	_, err := NewTranslator(cfg)
+	if err == nil {
+		t.Error("expected validation error for missing app_id, got nil")
+	}
+}
+
 func TestAvailableTranslators(t *testing.T) {
 	translators := AvailableTranslators()
 	names := make(map[string]bool)
@@ -83,7 +131,10 @@ func TestAvailableTranslators(t *testing.T) {
 	if !names["google"] {
 		t.Error("expected 'google' translator to be available")
 	}
-	if len(translators) != 2 {
-		t.Errorf("expected 2 available translators, got %d", len(translators))
+	if !names["baidu"] {
+		t.Error("expected 'baidu' translator to be available")
+	}
+	if len(translators) != 3 {
+		t.Errorf("expected 3 available translators, got %d", len(translators))
 	}
 }

@@ -230,8 +230,8 @@ dict:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Trans.Default != "google" {
-		t.Errorf("expected trans default 'google', got %q", cfg.Trans.Default)
+	if cfg.Trans.Default != "baidu" {
+		t.Errorf("expected trans default 'baidu', got %q", cfg.Trans.Default)
 	}
 	if cfg.Trans.LLM == nil {
 		t.Error("expected trans LLM config to be initialized with defaults")
