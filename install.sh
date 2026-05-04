@@ -53,11 +53,11 @@ DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${FILENAME}"
 
 echo "Downloading ${FILENAME}..."
 cd "$TEMP_DIR"
-curl -fSL -o "$FILENAME" "$DOWNLOAD_URL"
+curl -fSL -# -o "$FILENAME" "$DOWNLOAD_URL"
 
 echo "Verifying checksum..."
 SHA256SUMS_URL="https://github.com/${REPO}/releases/download/${TAG}/SHA256SUMS"
-curl -fSL -o "SHA256SUMS" "$SHA256SUMS_URL"
+curl -fSL -# -o "SHA256SUMS" "$SHA256SUMS_URL"
 sha256sum -c SHA256SUMS --status 2>/dev/null || shasum -a 256 -c SHA256SUMS --status 2>/dev/null || {
     echo "Warning: Checksum verification failed, continuing anyway..." >&2
 }
