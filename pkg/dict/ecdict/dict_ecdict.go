@@ -15,6 +15,8 @@ import (
 	"github.com/pkg/errors"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	_ "modernc.org/sqlite"
 )
 
 type DictEcdict struct {
@@ -29,7 +31,7 @@ func NewDictEcdit(config *config.EcdictConfig) (*DictEcdict, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := gorm.Open(sqlite.Open(config.DBFilename), &gorm.Config{})
+	db, err := gorm.Open(sqlite.New(sqlite.Config{DriverName: "sqlite", DSN: config.DBFilename}), &gorm.Config{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to open db file")
 	}
